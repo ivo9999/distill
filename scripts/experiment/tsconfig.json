@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "strict": true,
+    "paths": {
+      "@distill/ai/*": ["../../apps/web/lib/ai/*"]
+    }
+  }
+}

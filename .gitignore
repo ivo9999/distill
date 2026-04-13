@@ -1,0 +1,17 @@
+# Go
+apps/api/api
+apps/api/bot
+apps/api/worker
+
+# Node
+node_modules/
+.next/
+.env
+.env.local
+
+# OS
+.DS_Store
+
+# Output
+scripts/experiment/output/*.md
+!scripts/experiment/output/.gitkeep

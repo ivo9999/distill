@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: distill
+      POSTGRES_USER: distill
+      POSTGRES_PASSWORD: distill
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./apps/api
+    command: ["./api"]
+    env_file: ./apps/api/.env
+    depends_on: [postgres]
+    ports:
+      - "8080:8080"
+
+  bot:
+    build:
+      context: ./apps/api
+    command: ["./bot"]
+    env_file: ./apps/api/.env
+    depends_on: [postgres]
+
+  worker:
+    build:
+      context: ./apps/api
+    command: ["./worker"]
+    env_file: ./apps/api/.env
+    depends_on: [postgres, web]
+
+  web:
+    build:
+      context: ./apps/web
+    env_file: ./apps/web/.env
+    depends_on: [postgres]
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
