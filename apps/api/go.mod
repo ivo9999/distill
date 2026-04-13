@@ -1,3 +1,35 @@
 module github.com/sislelabs/distill/apps/api
 
-go 1.24.4
+go 1.25.0
+
+require (
+	github.com/bwmarrin/discordgo v0.29.0
+	github.com/go-chi/chi/v5 v5.2.5
+	github.com/jackc/pgx/v5 v5.9.1
+	github.com/riverqueue/river v0.34.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.34.0
+	github.com/stripe/stripe-go/v81 v81.4.0
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.34.0 // indirect
+	github.com/riverqueue/river/rivershared v0.34.0 // indirect
+	github.com/riverqueue/river/rivertype v0.34.0 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.2.0 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
+	go.uber.org/goleak v1.3.0 // indirect
+	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sys v0.0.0-20210423082822-04245dca01da // indirect
+	golang.org/x/text v0.35.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
