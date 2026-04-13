@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -57,6 +57,24 @@ export default function IntegrationsPage() {
     useState<Integration[]>(defaultIntegrations);
   const [saving, setSaving] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetch("/api/proxy/integrations")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setIntegrations((prev) =>
+            prev.map((i) => {
+              const existing = data.find((d: any) => d.platform === i.id);
+              return existing
+                ? { ...i, connected: true, publicationId: existing.publication_id || "" }
+                : i;
+            })
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const updateIntegration = (id: string, updates: Partial<Integration>) => {
     setIntegrations((prev) =>
       prev.map((i) => (i.id === id ? { ...i, ...updates } : i))
@@ -64,25 +82,30 @@ export default function IntegrationsPage() {
   };
 
   const handleConnect = async (id: string) => {
+    const integration = integrations.find((i) => i.id === id);
+    if (!integration) return;
     setSaving(id);
-    // TODO: save integration credentials to Go API
-    setTimeout(() => {
+    const res = await fetch(`/api/proxy/integrations/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: integration.apiKey,
+        publication_id: integration.publicationId,
+      }),
+    });
+    if (res.ok) {
       updateIntegration(id, { connected: true });
-      setSaving(null);
-    }, 500);
+    }
+    setSaving(null);
   };
 
   const handleDisconnect = async (id: string) => {
     setSaving(id);
-    // TODO: remove integration via Go API
-    setTimeout(() => {
-      updateIntegration(id, {
-        connected: false,
-        apiKey: "",
-        publicationId: "",
-      });
-      setSaving(null);
-    }, 500);
+    const res = await fetch(`/api/proxy/integrations/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      updateIntegration(id, { connected: false, apiKey: "", publicationId: "" });
+    }
+    setSaving(null);
   };
 
   return (

@@ -53,20 +53,40 @@ export default function ServerSettingsPage() {
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    // TODO: fetch server settings from Go API
-    setLoading(false);
+    fetch(`/api/proxy/servers/${serverId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.server) {
+          setServer({
+            id: data.server.id,
+            name: data.server.name,
+            community_type: data.server.community_type || "",
+            schedule_cron: data.server.schedule_cron,
+            channels: (data.channels || []).map((c: any) => c.name),
+          });
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [serverId]);
 
   const handleSave = async () => {
     setSaving(true);
-    // TODO: save to Go API
-    setTimeout(() => setSaving(false), 500);
+    await fetch(`/api/proxy/servers/${serverId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        community_type: server.community_type,
+        schedule_cron: server.schedule_cron,
+      }),
+    });
+    setSaving(false);
   };
 
   const handleGenerate = async () => {
     setGenerating(true);
-    // TODO: trigger generation via Go API
-    setTimeout(() => setGenerating(false), 2000);
+    await fetch(`/api/proxy/servers/${serverId}/generate`, { method: "POST" });
+    setGenerating(false);
   };
 
   if (loading) {

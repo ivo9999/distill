@@ -35,26 +35,36 @@ export default function NewsletterEditorPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: fetch newsletter from Go API using serverId and newsletterId
-    setContent(
-      "# Weekly Newsletter\n\nYour newsletter content will appear here after generation.\n\n## Highlights\n\n- Discussion topic 1\n- Discussion topic 2\n- Discussion topic 3\n"
-    );
-    setCost("$0.0234");
-    setGeneratedAt(new Date().toISOString());
-    setLoading(false);
-  }, [serverId, newsletterId]);
+    fetch(`/api/proxy/newsletters/${newsletterId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setContent(data.edited_markdown || data.draft_markdown || "");
+        setCost(`$${parseFloat(data.cost_usd || "0").toFixed(4)}`);
+        setGeneratedAt(data.created_at);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [newsletterId]);
 
   const handleSave = async () => {
     setSaving(true);
-    // TODO: save draft to Go API
-    setTimeout(() => setSaving(false), 500);
+    await fetch(`/api/proxy/newsletters/${newsletterId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ edited_markdown: content }),
+    });
+    setSaving(false);
   };
 
   const handlePublish = async () => {
     if (!selectedPlatform) return;
     setPublishing(true);
-    // TODO: publish via Go API
-    setTimeout(() => setPublishing(false), 1000);
+    await fetch(`/api/proxy/newsletters/${newsletterId}/publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ platform: selectedPlatform, subject: "Weekly Newsletter" }),
+    });
+    setPublishing(false);
   };
 
   if (loading) {

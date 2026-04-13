@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -39,6 +39,51 @@ export default function OnboardingPage() {
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [publicationId, setPublicationId] = useState("");
+  const [selectedServer, setSelectedServer] = useState<any>(null);
+  const [savingChannels, setSavingChannels] = useState(false);
+  const [savingIntegration, setSavingIntegration] = useState(false);
+
+  const handleBotAdded = async () => {
+    const res = await fetch("/api/proxy/servers");
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      setSelectedServer(data[0]);
+    }
+    setStep(2);
+  };
+
+  const handleChannelsContinue = async () => {
+    if (!selectedServer || !channels.trim()) {
+      setStep(3);
+      return;
+    }
+    setSavingChannels(true);
+    const channelNames = channels.split(",").map((c) => c.trim()).filter(Boolean);
+    for (const name of channelNames) {
+      await fetch(`/api/proxy/servers/${selectedServer.id}/channels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+    }
+    setSavingChannels(false);
+    setStep(3);
+  };
+
+  const handleIntegrationContinue = async () => {
+    if (!selectedPlatform || !apiKey || !publicationId) {
+      setStep(4);
+      return;
+    }
+    setSavingIntegration(true);
+    await fetch(`/api/proxy/integrations/${selectedPlatform}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: apiKey, publication_id: publicationId }),
+    });
+    setSavingIntegration(false);
+    setStep(4);
+  };
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -104,7 +149,7 @@ export default function OnboardingPage() {
             <a href={DISCORD_BOT_URL} target="_blank" rel="noopener noreferrer">
               <Button size="lg">Add Distill Bot to Discord</Button>
             </a>
-            <Button variant="outline" onClick={() => setStep(2)}>
+            <Button variant="outline" onClick={handleBotAdded}>
               I&apos;ve added the bot
             </Button>
           </CardContent>
@@ -141,7 +186,9 @@ export default function OnboardingPage() {
               <Button variant="outline" onClick={() => setStep(1)}>
                 Back
               </Button>
-              <Button onClick={() => setStep(3)}>Continue</Button>
+              <Button onClick={handleChannelsContinue} disabled={savingChannels}>
+                {savingChannels ? "Saving..." : "Continue"}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -216,12 +263,13 @@ export default function OnboardingPage() {
                   Skip for now
                 </Button>
                 <Button
-                  onClick={() => setStep(4)}
+                  onClick={handleIntegrationContinue}
                   disabled={
-                    selectedPlatform !== null && (!apiKey || !publicationId)
+                    savingIntegration ||
+                    (selectedPlatform !== null && (!apiKey || !publicationId))
                   }
                 >
-                  Continue
+                  {savingIntegration ? "Saving..." : "Continue"}
                 </Button>
               </div>
             </div>

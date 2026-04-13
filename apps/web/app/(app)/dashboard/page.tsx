@@ -20,8 +20,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: wire up to Go API via Next.js proxy
-    setLoading(false);
+    fetch("/api/proxy/servers")
+      .then((r) => r.json())
+      .then((data) => {
+        setServers(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) {
