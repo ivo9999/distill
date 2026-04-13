@@ -52,6 +52,7 @@ func NewRouter(s *Server) http.Handler {
 
 		// Servers
 		r.Get("/api/servers", listServers(s))
+		r.Post("/api/servers", createServer(s))
 		r.Get("/api/servers/{serverID}", getServer(s))
 		r.Patch("/api/servers/{serverID}", updateServer(s))
 		r.Post("/api/servers/{serverID}/generate", triggerGenerate(s))

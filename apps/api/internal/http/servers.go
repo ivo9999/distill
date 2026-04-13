@@ -12,6 +12,57 @@ import (
 	"github.com/sislelabs/distill/apps/api/internal/jobs"
 )
 
+type createServerRequest struct {
+	DiscordGuildID string `json:"discord_guild_id"`
+	Name           string `json:"name"`
+	IconURL        string `json:"icon_url"`
+	CommunityType  string `json:"community_type"`
+}
+
+func createServer(s *Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.UserIDFromContext(r.Context())
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		var req createServerRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+
+		if req.DiscordGuildID == "" || req.Name == "" {
+			writeError(w, http.StatusBadRequest, "discord_guild_id and name are required")
+			return
+		}
+
+		iconURL := pgtype.Text{Valid: false}
+		if req.IconURL != "" {
+			iconURL = pgtype.Text{String: req.IconURL, Valid: true}
+		}
+		communityType := pgtype.Text{Valid: false}
+		if req.CommunityType != "" {
+			communityType = pgtype.Text{String: req.CommunityType, Valid: true}
+		}
+
+		server, err := s.Queries.CreateServer(r.Context(), db.CreateServerParams{
+			UserID:         userID,
+			DiscordGuildID: req.DiscordGuildID,
+			Name:           req.Name,
+			IconUrl:        iconURL,
+			CommunityType:  communityType,
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to create server")
+			return
+		}
+
+		writeJSON(w, http.StatusCreated, server)
+	}
+}
+
 func listServers(s *Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.UserIDFromContext(r.Context())
