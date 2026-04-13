@@ -1,13 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { readFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
 import { anthropic } from "./client";
-
-const __dirname_resolved = typeof __dirname !== "undefined"
-  ? __dirname
-  : dirname(fileURLToPath(import.meta.url));
 
 export const StorySchema = z.object({
   story_id: z.string(),
@@ -26,10 +19,33 @@ export const Pass1OutputSchema = z.object({
 export type Story = z.infer<typeof StorySchema>;
 export type Pass1Output = z.infer<typeof Pass1OutputSchema>;
 
-const promptTemplate = readFileSync(
-  join(__dirname_resolved, "prompts", "pass1.txt"),
-  "utf-8"
-);
+const PASS1_PROMPT = `You are a community editor analyzing one week of Discord messages from {{COMMUNITY_TYPE}}.
+
+Your job is to find the 10–15 conversations from this week that would make the best content for a weekly newsletter sent to people who are NOT in the Discord. The newsletter readers care about:
+- Wins and launches by community members
+- Substantive technical debates and "I learned X" moments
+- Useful resources shared (links, tools, tips)
+- Hot takes and opinions that sparked real discussion
+- Questions that got great answers
+- Anything funny, weird, or memorable
+
+Ignore: greetings, off-topic chatter, single-message announcements with no engagement, support requests with no resolution, anything spam-adjacent, anything from a user in the opt-out list.
+
+For each story candidate, return:
+{
+  "story_id": "short-slug",
+  "type": "win|debate|resource|question|hot_take|moment",
+  "title": "one-line description of what happened",
+  "why_it_matters": "one sentence on why a newsletter reader would care",
+  "engagement_signal": <number 1-10 based on reactions, replies, thread depth>,
+  "key_message_ids": ["id1", "id2", ...],
+  "verbatim_snippets": ["short direct quotes if essential, max 1-2 per story, max 15 words each"]
+}
+
+Return ONLY a valid JSON array of 10–15 stories ranked by engagement_signal descending. No prose before or after the JSON.
+
+Here are this week's messages:
+{{MESSAGES_JSON}}`;
 
 export interface Message {
   id: string;
@@ -48,7 +64,7 @@ export async function runPass1(
   messages: Message[],
   communityType: string
 ): Promise<{ output: Pass1Output; tokensIn: number; tokensOut: number }> {
-  const prompt = promptTemplate
+  const prompt = PASS1_PROMPT
     .replace("{{COMMUNITY_TYPE}}", communityType)
     .replace("{{MESSAGES_JSON}}", JSON.stringify(messages, null, 2));
 
@@ -60,7 +76,7 @@ export async function runPass1(
 
   return {
     output: result.object,
-    tokensIn: result.usage.promptTokens,
-    tokensOut: result.usage.completionTokens,
+    tokensIn: result.usage.inputTokens ?? 0,
+    tokensOut: result.usage.outputTokens ?? 0,
   };
 }

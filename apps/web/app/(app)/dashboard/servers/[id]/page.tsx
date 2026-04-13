@@ -111,9 +111,9 @@ export default function ServerSettingsPage() {
             <Label>Schedule</Label>
             <Select
               value={server.schedule_cron}
-              onValueChange={(value) =>
-                setServer({ ...server, schedule_cron: value })
-              }
+              onValueChange={(value) => {
+                if (value) setServer({ ...server, schedule_cron: value });
+              }}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select schedule" />
