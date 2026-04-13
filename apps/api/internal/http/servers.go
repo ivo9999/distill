@@ -258,6 +258,16 @@ func addChannel(s *Server) http.HandlerFunc {
 			return
 		}
 
+		// Enqueue a backfill job for the newly added channel.
+		if s.RiverClient != nil {
+			_, _ = s.RiverClient.Insert(r.Context(), jobs.BackfillChannelArgs{
+				ServerID:         serverID,
+				ChannelID:        ch.ID,
+				DiscordChannelID: req.DiscordChannelID,
+				DiscordGuildID:   server.DiscordGuildID,
+			}, nil)
+		}
+
 		writeJSON(w, http.StatusCreated, ch)
 	}
 }

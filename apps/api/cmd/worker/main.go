@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivermigrate"
 
 	"github.com/sislelabs/distill/apps/api/internal/config"
 	"github.com/sislelabs/distill/apps/api/internal/db"
@@ -49,8 +50,10 @@ func main() {
 
 	// Create worker instances with dependencies.
 	genWorker := &jobs.GenerateNewsletterWorker{
-		Queries: queries,
-		LLM:     llm,
+		Queries:    queries,
+		LLM:        llm,
+		AppBaseURL: cfg.AppBaseURL,
+		DMSender:   bot,
 	}
 	backfillWorker := &jobs.BackfillChannelWorker{
 		Queries: queries,
@@ -68,6 +71,18 @@ func main() {
 	// Scheduler worker -- we set the Inserter after creating the client.
 	schedWorker := &jobs.SchedulerWorker{
 		Queries: queries,
+	}
+
+	// Run River migrations.
+	migrator, err := rivermigrate.New(riverpgxv5.New(pool), nil)
+	if err != nil {
+		slog.Error("failed to create river migrator", "err", err)
+		os.Exit(1)
+	}
+	_, err = migrator.Migrate(ctx, rivermigrate.DirectionUp, nil)
+	if err != nil {
+		slog.Error("failed to run river migrations", "err", err)
+		os.Exit(1)
 	}
 
 	// Register all workers.

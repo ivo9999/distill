@@ -28,8 +28,6 @@ func createCheckout(s *Server) http.HandlerFunc {
 			return
 		}
 
-		stripe.Key = s.Config.StripeSecretKey
-
 		// Create or reuse Stripe customer.
 		customerID := ""
 		if user.StripeCustomerID.Valid && user.StripeCustomerID.String != "" {
@@ -93,8 +91,6 @@ func createPortal(s *Server) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "no stripe customer found")
 			return
 		}
-
-		stripe.Key = s.Config.StripeSecretKey
 
 		params := &stripe.BillingPortalSessionParams{
 			Customer:  stripe.String(user.StripeCustomerID.String),

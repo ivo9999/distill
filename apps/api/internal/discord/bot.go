@@ -26,9 +26,11 @@ func New(token string, pool *pgxpool.Pool, queries *db.Queries, appURL, clientID
 		return nil, fmt.Errorf("creating discord session: %w", err)
 	}
 
-	s.Identify.Intents = discordgo.IntentsGuildMessages |
+	s.Identify.Intents = discordgo.IntentsGuilds |
+		discordgo.IntentsGuildMessages |
 		discordgo.IntentsGuildMessageReactions |
-		discordgo.IntentsGuilds
+		discordgo.IntentMessageContent |
+		discordgo.IntentDirectMessages
 
 	b := &Bot{
 		session:  s,

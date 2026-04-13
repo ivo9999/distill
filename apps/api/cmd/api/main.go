@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/stripe/stripe-go/v81"
 
 	"github.com/sislelabs/distill/apps/api/internal/config"
 	"github.com/sislelabs/distill/apps/api/internal/db"
@@ -39,11 +42,22 @@ func main() {
 	queries := db.New(pool)
 	llm := llmclient.New(cfg.WebInternalBaseURL, cfg.InternalAPIKey)
 
+	// Set Stripe API key once at startup.
+	stripe.Key = cfg.StripeSecretKey
+
+	// Create a River client for job insertion (no workers needed in the API binary).
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
+	if err != nil {
+		slog.Error("failed to create river client", "err", err)
+		os.Exit(1)
+	}
+
 	srv := &apphttp.Server{
-		Queries: queries,
-		Pool:    pool,
-		Config:  cfg,
-		LLM:     llm,
+		Queries:     queries,
+		Pool:        pool,
+		Config:      cfg,
+		LLM:         llm,
+		RiverClient: riverClient,
 	}
 
 	router := apphttp.NewRouter(srv)

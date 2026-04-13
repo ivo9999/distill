@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"time"
@@ -23,8 +24,10 @@ func (GenerateNewsletterArgs) Kind() string { return "generate_newsletter" }
 // GenerateNewsletterWorker generates a newsletter for a server.
 type GenerateNewsletterWorker struct {
 	river.WorkerDefaults[GenerateNewsletterArgs]
-	Queries *db.Queries
-	LLM     *llmclient.Client
+	Queries    *db.Queries
+	LLM        *llmclient.Client
+	AppBaseURL string
+	DMSender   DiscordDMSender
 }
 
 func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[GenerateNewsletterArgs]) error {
@@ -125,7 +128,7 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 	var costNum pgtype.Numeric
 	_ = costNum.Scan(fmt.Sprintf("%f", resp.CostUsd))
 
-	_, err = w.Queries.CreateNewsletter(ctx, db.CreateNewsletterParams{
+	nl, err := w.Queries.CreateNewsletter(ctx, db.CreateNewsletterParams{
 		ServerID:       serverID,
 		PeriodStart:    pgtype.Timestamptz{Time: periodStart, Valid: true},
 		PeriodEnd:      pgtype.Timestamptz{Time: periodEnd, Valid: true},
@@ -142,6 +145,18 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 		return fmt.Errorf("saving newsletter: %w", err)
 	}
 
+	// Send a DM to the user notifying them that the draft is ready.
+	if w.DMSender != nil {
+		link := fmt.Sprintf("%s/dashboard/servers/%s/newsletters/%s", w.AppBaseURL, formatUUID(serverID), formatUUID(nl.ID))
+		_ = w.DMSender.SendDM(user.DiscordID, fmt.Sprintf("Your weekly newsletter draft is ready! Review it here: %s", link))
+	}
+
 	slog.Info("newsletter generated", "server_id", serverID, "messages", len(messages))
 	return nil
+}
+
+func formatUUID(id pgtype.UUID) string {
+	b := id.Bytes
+	s := hex.EncodeToString(b[:])
+	return s[:8] + "-" + s[8:12] + "-" + s[12:16] + "-" + s[16:20] + "-" + s[20:]
 }

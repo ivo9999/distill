@@ -53,7 +53,7 @@ func NewRouter(s *Server) http.Handler {
 		// Servers
 		r.Get("/api/servers", listServers(s))
 		r.Get("/api/servers/{serverID}", getServer(s))
-		r.Put("/api/servers/{serverID}", updateServer(s))
+		r.Patch("/api/servers/{serverID}", updateServer(s))
 		r.Post("/api/servers/{serverID}/generate", triggerGenerate(s))
 
 		// Channels
@@ -64,7 +64,7 @@ func NewRouter(s *Server) http.Handler {
 		// Newsletters
 		r.Get("/api/servers/{serverID}/newsletters", listNewsletters(s))
 		r.Get("/api/newsletters/{newsletterID}", getNewsletter(s))
-		r.Put("/api/newsletters/{newsletterID}", updateNewsletter(s))
+		r.Patch("/api/newsletters/{newsletterID}", updateNewsletter(s))
 		r.Post("/api/newsletters/{newsletterID}/publish", publishNewsletter(s))
 
 		// Integrations
@@ -83,7 +83,7 @@ func NewRouter(s *Server) http.Handler {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
