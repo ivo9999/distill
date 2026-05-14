@@ -208,21 +208,23 @@ func triggerGenerate(s *Server) http.HandlerFunc {
 			return
 		}
 
-		// Free-tier gate (manual triggers count as on-demand).
-		user, err := s.Queries.GetUserByID(r.Context(), userID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to get user")
-			return
-		}
-		if user.SubscriptionStatus != "active" {
-			guildUsed, err := s.Queries.CountOnDemandEverForGuild(r.Context(), server.DiscordGuildID)
+		// Free-tier gate (manual triggers count as on-demand). Admins bypass.
+		if !s.isAdminUUID(userID) {
+			user, err := s.Queries.GetUserByID(r.Context(), userID)
 			if err != nil {
-				writeError(w, http.StatusInternalServerError, "failed to count guild generations")
+				writeError(w, http.StatusInternalServerError, "failed to get user")
 				return
 			}
-			if guildUsed >= 1 {
-				writeError(w, http.StatusPaymentRequired, "free tier limit reached: subscribe to generate more")
-				return
+			if user.SubscriptionStatus != "active" {
+				guildUsed, err := s.Queries.CountOnDemandEverForGuild(r.Context(), server.DiscordGuildID)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "failed to count guild generations")
+					return
+				}
+				if guildUsed >= 1 {
+					writeError(w, http.StatusPaymentRequired, "free tier limit reached: subscribe to generate more")
+					return
+				}
 			}
 		}
 

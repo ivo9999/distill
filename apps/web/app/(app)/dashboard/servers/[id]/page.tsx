@@ -247,7 +247,7 @@ export default function ServerSettingsPage() {
                   >
                     <span className="text-ink-medium">#</span>
                     {dc.name}
-                    <span className="ml-auto text-xs text-blue-500">+ Add</span>
+                    <span className="ml-auto text-xs text-link">+ Add</span>
                   </button>
                 ))}
               </div>
@@ -258,7 +258,7 @@ export default function ServerSettingsPage() {
 
           {/* Save */}
           <div className="flex items-center justify-end gap-3">
-            {saved && <span className="text-sm text-green-600">Saved!</span>}
+            {saved && <span className="text-sm text-positive">Saved!</span>}
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "Save"}
             </Button>

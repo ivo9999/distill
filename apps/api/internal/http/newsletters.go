@@ -61,9 +61,9 @@ func createNewsletter(s *Server) http.HandlerFunc {
 
 		// Free-tier gate: non-active users get exactly 1 on-demand generation,
 		// counted lifetime per Discord guild (so a fresh account on the same
-		// guild does not reset the quota). Scheduled generations (is_on_demand=false)
-		// are unaffected.
-		if req.IsOnDemand {
+		// guild does not reset the quota). Admins bypass. Scheduled generations
+		// (is_on_demand=false) are unaffected.
+		if req.IsOnDemand && !s.isAdminUUID(userID) {
 			user, err := s.Queries.GetUserByID(r.Context(), userID)
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "failed to get user")
@@ -136,28 +136,20 @@ func getGenerationQuota(s *Server) http.HandlerFunc {
 			return
 		}
 
+		// Admins get unlimited, no DB lookup needed.
+		if s.isAdminUUID(userID) {
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"used":      int32(0),
+				"limit":     int32(999),
+				"tier":      "admin",
+				"remaining": int32(999),
+			})
+			return
+		}
+
 		user, err := s.Queries.GetUserByID(r.Context(), userID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to get user")
-			return
-		}
-
-		used, err := s.Queries.CountOnDemandThisMonth(r.Context(), serverID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to count on-demand generations")
-			return
-		}
-
-		// Admins get unlimited
-		uid := fmt.Sprintf("%x-%x-%x-%x-%x",
-			userID.Bytes[0:4], userID.Bytes[4:6], userID.Bytes[6:8], userID.Bytes[8:10], userID.Bytes[10:16])
-		if s.isAdmin(uid) {
-			writeJSON(w, http.StatusOK, map[string]interface{}{
-				"used":      used,
-				"limit":     int32(999),
-				"tier":      "admin",
-				"remaining": int32(999) - used,
-			})
 			return
 		}
 
@@ -183,16 +175,18 @@ func getGenerationQuota(s *Server) http.HandlerFunc {
 			return
 		}
 
-		// Starter: 3/month, Pro: 10/month
-		// TODO: differentiate starter vs pro via Stripe price ID
-		limit := int32(3)
-		tier := "starter"
-
+		// Pro: per-month on-demand soft cap (drafts also generate on Sunday schedule).
+		used, err := s.Queries.CountOnDemandThisMonth(r.Context(), serverID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to count on-demand generations")
+			return
+		}
+		const proLimit int32 = 10
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"used":      used,
-			"limit":     limit,
-			"tier":      tier,
-			"remaining": limit - used,
+			"limit":     proLimit,
+			"tier":      "pro",
+			"remaining": proLimit - used,
 		})
 	}
 }
@@ -356,15 +350,17 @@ func publishNewsletter(s *Server) http.HandlerFunc {
 		}
 
 		// Publishing is paywalled: free-tier users can generate a draft but
-		// must subscribe to ship it.
-		user, err := s.Queries.GetUserByID(r.Context(), userID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to get user")
-			return
-		}
-		if user.SubscriptionStatus != "active" {
-			writeError(w, http.StatusPaymentRequired, "subscribe to publish newsletters")
-			return
+		// must subscribe to ship it. Admins bypass.
+		if !s.isAdminUUID(userID) {
+			user, err := s.Queries.GetUserByID(r.Context(), userID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to get user")
+				return
+			}
+			if user.SubscriptionStatus != "active" {
+				writeError(w, http.StatusPaymentRequired, "subscribe to publish newsletters")
+				return
+			}
 		}
 
 		var req publishNewsletterRequest

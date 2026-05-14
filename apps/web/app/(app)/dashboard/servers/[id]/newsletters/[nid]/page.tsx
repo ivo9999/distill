@@ -118,9 +118,9 @@ export default function NewsletterEditorPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="-mx-4 -my-6 md:-my-8 flex flex-col min-h-[calc(100vh-3.5rem)] border-y border-ink-lighter">
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3 shrink-0">
+      <div className="flex items-center justify-between border-b border-ink-lighter px-4 py-3 shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() =>
@@ -263,7 +263,7 @@ export default function NewsletterEditorPage() {
             Preview
           </div>
           <div className="flex-1 overflow-y-auto p-6">
-            <article className="prose prose-sm prose-gray max-w-none prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-foreground prose-strong:text-foreground">
+            <article className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-foreground prose-strong:text-foreground">
               <ReactMarkdown>{content}</ReactMarkdown>
             </article>
           </div>

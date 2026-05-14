@@ -32,6 +32,7 @@ export function SubscribeBanner() {
         </div>
       </div>
       <Button
+        variant="primary"
         onClick={handleSubscribe}
         disabled={loading}
         size="sm"

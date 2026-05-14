@@ -3,6 +3,8 @@ package http
 import (
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/sislelabs/distill/apps/api/internal/auth"
 )
 
@@ -13,6 +15,11 @@ func (s *Server) isAdmin(userID string) bool {
 		}
 	}
 	return false
+}
+
+// isAdminUUID is a convenience wrapper that formats a pgtype.UUID before checking.
+func (s *Server) isAdminUUID(userID pgtype.UUID) bool {
+	return s.isAdmin(formatUUID(userID))
 }
 
 func adminDashboard(s *Server) http.HandlerFunc {

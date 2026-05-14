@@ -116,7 +116,7 @@ export default function LandingPage() {
               <Button variant="ghost" size="sm">Sign in</Button>
             </form>
             <form action={signInWithDiscord}>
-              <Button size="sm" className="rounded-pill">
+              <Button variant="primary" size="sm" className="rounded-pill">
                 Try free
                 <ArrowRight className="ml-1 size-3" />
               </Button>
@@ -145,7 +145,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
             <form action={signInWithDiscord}>
-              <Button size="lg" className="rounded-pill px-7">
+              <Button variant="primary" size="lg" className="rounded-pill px-7">
                 Generate your first draft free
                 <ArrowRight className="ml-1 size-4" />
               </Button>
@@ -373,7 +373,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <form action={signInWithDiscord} className="w-full">
-                <Button className="w-full rounded-pill">
+                <Button variant="primary" className="w-full rounded-pill">
                   Get started
                   <ArrowRight className="ml-1 size-3.5" />
                 </Button>
@@ -422,7 +422,7 @@ export default function LandingPage() {
             Generate your first draft free. Your members already did the work.
           </p>
           <form action={signInWithDiscord}>
-            <Button size="lg" className="rounded-pill px-7">
+            <Button variant="primary" size="lg" className="rounded-pill px-7">
               Try free with Discord
               <ArrowRight className="ml-1 size-4" />
             </Button>

@@ -108,7 +108,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <Link href="/dashboard/onboarding">
-            <Button size="lg" className="rounded-pill">
+            <Button variant="primary" size="lg" className="rounded-pill">
               Set up your first server
               <ArrowRight className="ml-1 h-4 w-4" />
             </Button>

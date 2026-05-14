@@ -88,7 +88,11 @@ export default function NewslettersPage() {
           <h2 className="text-2xl font-bold">Newsletters</h2>
           {quota && (
             <p className="text-xs text-ink-medium mt-1">
-              {quota.remaining}/{quota.limit} on-demand generations left this month ({quota.tier})
+              {quota.tier === "free"
+                ? quota.remaining > 0
+                  ? "1 free generation available for this server"
+                  : "Free generation used — subscribe to keep going"
+                : `${quota.remaining}/${quota.limit} on-demand generations left this month (${quota.tier})`}
             </p>
           )}
         </div>
@@ -96,7 +100,15 @@ export default function NewslettersPage() {
           onClick={handleGenerate}
           disabled={generating || !!quotaExhausted}
         >
-          {generating ? "Generating..." : quotaExhausted ? "Limit reached" : "Generate now"}
+          {generating
+            ? "Generating..."
+            : quotaExhausted
+              ? quota?.tier === "free"
+                ? "Subscribe to generate"
+                : "Limit reached"
+              : quota?.tier === "free"
+                ? "Try free"
+                : "Generate now"}
         </Button>
       </div>
 
