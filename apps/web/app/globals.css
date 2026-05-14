@@ -1,129 +1,455 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
-    --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans);
-    --color-sidebar-ring: var(--sidebar-ring);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar: var(--sidebar);
-    --color-chart-5: var(--chart-5);
-    --color-chart-4: var(--chart-4);
-    --color-chart-3: var(--chart-3);
-    --color-chart-2: var(--chart-2);
-    --color-chart-1: var(--chart-1);
-    --color-ring: var(--ring);
-    --color-input: var(--input);
-    --color-border: var(--border);
-    --color-destructive: var(--destructive);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-accent: var(--accent);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-muted: var(--muted);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-secondary: var(--secondary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-primary: var(--primary);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-popover: var(--popover);
-    --color-card-foreground: var(--card-foreground);
-    --color-card: var(--card);
-    --color-foreground: var(--foreground);
-    --color-background: var(--background);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
-}
+/* ============================================================================
+   Foundation tokens (Fizzy-inspired)
+
+   Layers, top to bottom:
+   1. :root      — light-mode primitives: OKLCH ramps, semantic vars,
+                   shadcn legacy vars
+   2. .dark      — overrides only the LCH ramps; semantic vars resolve through
+   3. @theme     — registers tokens with Tailwind so utilities like
+                   `bg-canvas`, `text-ink-darker`, `bg-accent-3`,
+                   `rounded-pill`, `ease-out-expo` work
+   ============================================================================ */
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+  /* Spacing — Fizzy uses ch for inline (content-aware), rem for block */
+  --inline-space: 1ch;
+  --inline-space-half: calc(var(--inline-space) / 2);
+  --inline-space-double: calc(var(--inline-space) * 2);
+  --block-space: 1rem;
+  --block-space-half: calc(var(--block-space) / 2);
+  --block-space-double: calc(var(--block-space) * 2);
+
+  /* Radius — small for cards, full pill for buttons */
+  --radius: 0.375rem;
+  --radius-card: 0.2em;
+  --radius-pill: 99rem;
+
+  /* Layered shadow stack (subtle in light, deeper in dark) */
+  --shadow:
+    0 0 0 1px oklch(0% 0 0 / 5%),
+    0 0.2em 0.2em oklch(0% 0 0 / 5%),
+    0 0.4em 0.4em oklch(0% 0 0 / 5%),
+    0 0.8em 0.8em oklch(0% 0 0 / 5%);
+
+  /* Focus ring */
+  --focus-ring-size: 2px;
+  --focus-ring-offset: 1px;
+
+  /* OKLCH primitives — fixed */
+  --lch-black: 0% 0 0;
+  --lch-white: 100% 0 0;
+
+  /* Light mode ramps — 10 hues × 7 lightness levels */
+  --lch-canvas: var(--lch-white);
+  --lch-ink-inverted: var(--lch-white);
+
+  --lch-ink-darkest:  26%   0.05  264;
+  --lch-ink-darker:   40%   0.026 262;
+  --lch-ink-dark:     56%   0.014 260;
+  --lch-ink-medium:   66%   0.008 258;
+  --lch-ink-light:    84%   0.005 256;
+  --lch-ink-lighter:  92%   0.003 254;
+  --lch-ink-lightest: 96%   0.002 252;
+
+  --lch-red-darkest:  26%    0.105  34;
+  --lch-red-darker:   40%    0.154  36;
+  --lch-red-dark:     59%    0.19   38;
+  --lch-red-medium:   66%    0.204  40;
+  --lch-red-light:    84.08% 0.0837 41.96;
+  --lch-red-lighter:  92%    0.03   44;
+  --lch-red-lightest: 96%    0.013  46;
+
+  --lch-yellow-darkest:  26%    0.0729 40;
+  --lch-yellow-darker:   40%    0.12   50;
+  --lch-yellow-dark:     58%    0.156  60;
+  --lch-yellow-medium:   74%    0.184  70;
+  --lch-yellow-light:    84%    0.12   80;
+  --lch-yellow-lighter:  92%    0.076  90;
+  --lch-yellow-lightest: 96%    0.034  100;
+
+  --lch-lime-darkest:  26%    0.064  109;
+  --lch-lime-darker:   40%    0.101  110;
+  --lch-lime-dark:     56.5%  0.142  111;
+  --lch-lime-medium:   68%    0.176  113.11;
+  --lch-lime-light:    83.92% 0.0927 113.6;
+  --lch-lime-lighter:  92%    0.046  114;
+  --lch-lime-lightest: 96%    0.034  115;
+
+  --lch-green-darkest:  26%    0.071  149;
+  --lch-green-darker:   40%    0.12   148;
+  --lch-green-dark:     55%    0.162  147;
+  --lch-green-medium:   66%    0.208  146;
+  --lch-green-light:    83.92% 0.0772 145.06;
+  --lch-green-lighter:  92%    0.044  144;
+  --lch-green-lightest: 96%    0.022  143;
+
+  --lch-aqua-darkest:  26%    0.059  214;
+  --lch-aqua-darker:   40%    0.093  212;
+  --lch-aqua-dark:     55.5%  0.122  210;
+  --lch-aqua-medium:   66%    0.152  208;
+  --lch-aqua-light:    83.88% 0.0555 206.02;
+  --lch-aqua-lighter:  92%    0.02   204;
+  --lch-aqua-lightest: 96%    0.012  202;
+
+  --lch-blue-darkest:  26%    0.126  264;
+  --lch-blue-darker:   40%    0.166  262;
+  --lch-blue-dark:     57.02% 0.1895 260.46;
+  --lch-blue-medium:   66%    0.196  257.82;
+  --lch-blue-light:    84.04% 0.0719 255.29;
+  --lch-blue-lighter:  92%    0.026  254;
+  --lch-blue-lightest: 96%    0.016  252;
+
+  --lch-violet-darkest:  26%    0.148  292;
+  --lch-violet-darker:   40%    0.2    290;
+  --lch-violet-dark:     58%    0.216  287.6;
+  --lch-violet-medium:   66%    0.206  285.52;
+  --lch-violet-light:    84.08% 0.0791 283.47;
+  --lch-violet-lighter:  92%    0.03   282;
+  --lch-violet-lightest: 96%    0.015  280;
+
+  --lch-purple-darkest:  26%    0.131  314;
+  --lch-purple-darker:   40%    0.178  312;
+  --lch-purple-dark:     58%    0.21   310;
+  --lch-purple-medium:   66%    0.258  308;
+  --lch-purple-light:    84.09% 0.0778 305.77;
+  --lch-purple-lighter:  92%    0.03   304;
+  --lch-purple-lightest: 96%    0.019  302;
+
+  --lch-pink-darkest:  26%    0.12   348;
+  --lch-pink-darker:   40%    0.16   346;
+  --lch-pink-dark:     59%    0.188  344;
+  --lch-pink-medium:   71.8%  0.2008 342;
+  --lch-pink-light:    84.04% 0.0737 340;
+  --lch-pink-lighter:  92%    0.03   338;
+  --lch-pink-lightest: 96%    0.02   336;
+
+  /* Semantic color names (resolve through LCH ramps so dark mode flips them) */
+  --canvas: oklch(var(--lch-canvas));
+  --ink-inverted: oklch(var(--lch-ink-inverted));
+
+  --ink:         oklch(var(--lch-ink-darkest));
+  --ink-darkest: oklch(var(--lch-ink-darkest));
+  --ink-darker:  oklch(var(--lch-ink-darker));
+  --ink-dark:    oklch(var(--lch-ink-dark));
+  --ink-medium:  oklch(var(--lch-ink-medium));
+  --ink-light:   oklch(var(--lch-ink-light));
+  --ink-lighter: oklch(var(--lch-ink-lighter));
+  --ink-lightest: oklch(var(--lch-ink-lightest));
+
+  --link:           oklch(var(--lch-blue-dark));
+  --negative:       oklch(var(--lch-red-dark));
+  --positive:       oklch(var(--lch-green-dark));
+  --warning:        oklch(var(--lch-yellow-dark));
+  --highlight:      oklch(var(--lch-yellow-lighter));
+  --marker:         oklch(var(--lch-red-medium));
+  --selected:       oklch(var(--lch-blue-lighter));
+  --selected-light: oklch(var(--lch-blue-lightest));
+  --selected-dark:  oklch(var(--lch-blue-light));
+
+  /* Per-card / per-thing accent palette (8 distinct hues) */
+  --accent-1: oklch(var(--lch-ink-medium));
+  --accent-2: oklch(var(--lch-yellow-medium));
+  --accent-3: oklch(var(--lch-lime-medium));
+  --accent-4: oklch(var(--lch-green-medium));
+  --accent-5: oklch(var(--lch-aqua-medium));
+  --accent-6: oklch(var(--lch-blue-medium));
+  --accent-7: oklch(var(--lch-violet-medium));
+  --accent-8: oklch(var(--lch-pink-medium));
+
+  /* shadcn legacy semantic tokens — unchanged names so existing components
+     keep working; values now derive from Fizzy semantic vars */
+  --background:                 var(--canvas);
+  --foreground:                 var(--ink);
+  --card:                       var(--canvas);
+  --card-foreground:            var(--ink);
+  --popover:                    var(--canvas);
+  --popover-foreground:         var(--ink);
+  --primary:                    var(--ink);
+  --primary-foreground:         var(--ink-inverted);
+  --secondary:                  var(--ink-lightest);
+  --secondary-foreground:       var(--ink);
+  --muted:                      var(--ink-lightest);
+  --muted-foreground:           var(--ink-dark);
+  --accent:                     var(--ink-lighter);
+  --accent-foreground:          var(--ink);
+  --destructive:                var(--negative);
+  --border:                     var(--ink-lighter);
+  --input:                      var(--ink-lighter);
+  --ring:                       var(--link);
+  --chart-1:                    var(--accent-6);
+  --chart-2:                    var(--accent-4);
+  --chart-3:                    var(--accent-2);
+  --chart-4:                    var(--accent-7);
+  --chart-5:                    var(--accent-8);
+  --sidebar:                    var(--ink-lightest);
+  --sidebar-foreground:         var(--ink);
+  --sidebar-primary:             var(--ink);
+  --sidebar-primary-foreground: var(--ink-inverted);
+  --sidebar-accent:             var(--ink-lighter);
+  --sidebar-accent-foreground:  var(--ink);
+  --sidebar-border:             var(--ink-lighter);
+  --sidebar-ring:               var(--link);
 }
 
+/* Dark mode — only the LCH ramps need overriding; everything else flows through */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+  --lch-canvas: 20% 0.0195 232.58;
+  --lch-ink-inverted: var(--lch-black);
+
+  --lch-ink-darkest:  96.02% 0.0034 260;
+  --lch-ink-darker:   86%    0.0061 260;
+  --lch-ink-dark:     73.97% 0.009  260;
+  --lch-ink-medium:   62%    0.0122 260;
+  --lch-ink-light:    48%    0.0148 260;
+  --lch-ink-lighter:  38%    0.0178 260;
+  --lch-ink-lightest: 28%    0.0204 260;
+
+  --lch-red-darkest:  95.85% 0.0218 46;
+  --lch-red-darker:   86%    0.086  44;
+  --lch-red-dark:     73.95% 0.139  42;
+  --lch-red-medium:   62%    0.154  40;
+  --lch-red-light:    40%    0.088  38;
+  --lch-red-lighter:  30%    0.032  36;
+  --lch-red-lightest: 25%    0.011  34;
+
+  --lch-yellow-darkest:  96%    0.056  100;
+  --lch-yellow-darker:   86%    0.103  90;
+  --lch-yellow-dark:     74.06% 0.136  80;
+  --lch-yellow-medium:   62.1%  0.146  70;
+  --lch-yellow-light:    40%    0.0736 60;
+  --lch-yellow-lighter:  30%    0.026  50;
+  --lch-yellow-lightest: 25%    0.01   40;
+
+  --lch-lime-darkest:  96.04% 0.066  115;
+  --lch-lime-darker:   86%    0.098  114;
+  --lch-lime-dark:     73.97% 0.121  113;
+  --lch-lime-medium:   62%    0.128  112;
+  --lch-lime-light:    40%    0.0637 111;
+  --lch-lime-lighter:  30%    0.024  110;
+  --lch-lime-lightest: 25%    0.012  109;
+
+  --lch-green-darkest:  96.12% 0.035  143;
+  --lch-green-darker:   86%    0.082  144;
+  --lch-green-dark:     73.99% 0.117  145;
+  --lch-green-medium:   62%    0.1261 146;
+  --lch-green-light:    40%    0.065  147;
+  --lch-green-lighter:  30%    0.03   148;
+  --lch-green-lightest: 25%    0.018  149;
+
+  --lch-aqua-darkest:  96.15% 0.0244 202;
+  --lch-aqua-darker:   86%    0.06   204;
+  --lch-aqua-dark:     73.92% 0.095  206;
+  --lch-aqua-medium:   62%    0.106  208;
+  --lch-aqua-light:    40%    0.0594 210;
+  --lch-aqua-lighter:  30%    0.028  212;
+  --lch-aqua-lightest: 25%    0.017  214;
+
+  --lch-blue-darkest:  95.93% 0.0217 252;
+  --lch-blue-darker:   86%    0.068  254;
+  --lch-blue-dark:     74%    0.1293 256;
+  --lch-blue-medium:   62%    0.159  258;
+  --lch-blue-light:    40%    0.094  260;
+  --lch-blue-lighter:  30%    0.0452 262;
+  --lch-blue-lightest: 25%    0.0318 264;
+
+  --lch-violet-darkest:  95.97% 0.019  280;
+  --lch-violet-darker:   86%    0.068  282;
+  --lch-violet-dark:     74.08% 0.142  284;
+  --lch-violet-medium:   62%    0.184  286;
+  --lch-violet-light:    40%    0.108  288;
+  --lch-violet-lighter:  30%    0.048  290;
+  --lch-violet-lightest: 25%    0.025  292;
+
+  --lch-purple-darkest:  95.99% 0.0217 302;
+  --lch-purple-darker:   86%    0.068  304;
+  --lch-purple-dark:     73.98% 0.141  306;
+  --lch-purple-medium:   62%    0.177  308;
+  --lch-purple-light:    40%    0.099  310;
+  --lch-purple-lighter:  30%    0.04   312;
+  --lch-purple-lightest: 25%    0.017  314;
+
+  --lch-pink-darkest:  95.84% 0.0308 336;
+  --lch-pink-darker:   86%    0.074  338;
+  --lch-pink-dark:     74.04% 0.1294 340;
+  --lch-pink-medium:   62%    0.166  342;
+  --lch-pink-light:    40%    0.085  344;
+  --lch-pink-lighter:  30%    0.03   346;
+  --lch-pink-lightest: 25%    0.011  348;
+
+  /* Highlight reads better as blue in dark mode */
+  --highlight: oklch(var(--lch-blue-lighter));
+
+  --shadow:
+    0 0 0 1px oklch(0% 0 0 / 0.42),
+    0 0.2em 1.6em -0.8em oklch(0% 0 0 / 0.6),
+    0 0.4em 2.4em -1em   oklch(0% 0 0 / 0.7),
+    0 0.4em 0.8em -1.2em oklch(0% 0 0 / 0.8),
+    0 0.8em 1.2em -1.6em oklch(0% 0 0 / 0.9),
+    0 1.2em 1.6em -2em   oklch(0% 0 0 / 1);
+}
+
+/* Tailwind 4 theme registration — dynamic (var-backed) tokens */
+@theme inline {
+  /* Fonts */
+  --font-sans: "Adwaita Sans", "Segoe UI Variable", -apple-system, BlinkMacSystemFont,
+               "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
+               "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Fizzy semantic colors → Tailwind utilities (bg-canvas, text-ink-darker, …) */
+  --color-canvas: var(--canvas);
+  --color-ink: var(--ink);
+  --color-ink-darkest: var(--ink-darkest);
+  --color-ink-darker: var(--ink-darker);
+  --color-ink-dark: var(--ink-dark);
+  --color-ink-medium: var(--ink-medium);
+  --color-ink-light: var(--ink-light);
+  --color-ink-lighter: var(--ink-lighter);
+  --color-ink-lightest: var(--ink-lightest);
+  --color-ink-inverted: var(--ink-inverted);
+
+  --color-link: var(--link);
+  --color-negative: var(--negative);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
+  --color-highlight: var(--highlight);
+  --color-marker: var(--marker);
+  --color-selected: var(--selected);
+  --color-selected-light: var(--selected-light);
+  --color-selected-dark: var(--selected-dark);
+
+  --color-accent-1: var(--accent-1);
+  --color-accent-2: var(--accent-2);
+  --color-accent-3: var(--accent-3);
+  --color-accent-4: var(--accent-4);
+  --color-accent-5: var(--accent-5);
+  --color-accent-6: var(--accent-6);
+  --color-accent-7: var(--accent-7);
+  --color-accent-8: var(--accent-8);
+
+  /* shadcn legacy mappings (kept so existing components don't break) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Radius scale */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Layered Fizzy shadow as a Tailwind utility (shadow-card), light/dark aware */
+  --shadow-card: var(--shadow);
+}
+
+/* Tailwind 4 theme registration — static tokens */
+@theme {
+  --radius-card: 0.2em;
+  --radius-pill: 99rem;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-overshoot: cubic-bezier(0.25, 1.75, 0.5, 1);
+  --ease-out-overshoot-subtle: cubic-bezier(0.25, 1.25, 0.5, 1);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
   body {
     @apply bg-background text-foreground;
-    }
-  html {
-    @apply font-sans;
-    }
+    font-family: var(--font-sans);
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--selected);
+  }
+  .dark ::selection {
+    background: var(--selected-dark);
+  }
+}
+
+@layer utilities {
+  .text-2xs {
+    font-size: 0.65rem;
+    line-height: 1rem;
+  }
+
+  .scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Dark-mode surface overrides.
+   The Fizzy palette flips `--ink` so that `bg-ink` becomes near-white in dark
+   mode — that produces white-looking high-contrast buttons that read poorly on
+   a dark canvas. Pin those background utilities to a dark raised surface and
+   re-flip the paired `text-ink-inverted` so the text stays light. Other uses
+   of `text-ink-inverted` (on `bg-link`, `bg-positive`, etc.) are untouched. */
+.dark .bg-ink,
+.dark .hover\:bg-ink:hover {
+  background-color: oklch(var(--lch-ink-lighter));
+}
+.dark .bg-ink.text-ink-inverted,
+.dark .bg-ink .text-ink-inverted {
+  color: oklch(var(--lch-ink-darkest));
+}
+
+/* Fizzy wobble: organic blob morphs through several border-radius states. */
+@keyframes wobble {
+  0%   { border-radius: 54% 46% 61% 39% / 57% 49% 51% 43%; }
+  15%  { border-radius: 66% 34% 72% 28% / 39% 63% 37% 61%; }
+  25%  { border-radius: 55% 47% 62% 40% / 58% 50% 52% 44%; }
+  33%  { border-radius: 46% 54% 61% 39% / 50% 51% 49% 50%; }
+  50%  { border-radius: 54% 46% 61% 39% / 57% 49% 51% 43%; }
+  75%  { border-radius: 53% 45% 60% 38% / 56% 48% 50% 42%; }
+  100% { border-radius: 54% 46% 61% 39% / 57% 49% 51% 43%; }
+}
+
+@media (any-hover: hover) {
+  .card-fizzy:hover .fizzy-bubble {
+    animation: wobble 1200ms ease-in-out;
+  }
 }

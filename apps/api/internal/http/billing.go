@@ -42,8 +42,9 @@ func createCheckout(s *Server) http.HandlerFunc {
 					Quantity: stripe.Int64(1),
 				},
 			},
-			SuccessURL: stripe.String(s.Config.AppBaseURL + "/billing?success=true"),
-			CancelURL:  stripe.String(s.Config.AppBaseURL + "/billing?canceled=true"),
+			SuccessURL:            stripe.String(s.Config.AppBaseURL + "/dashboard?success=true"),
+			CancelURL:             stripe.String(s.Config.AppBaseURL + "/dashboard?canceled=true"),
+			AllowPromotionCodes:   stripe.Bool(true),
 		}
 
 		if customerID != "" {

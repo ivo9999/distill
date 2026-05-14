@@ -32,5 +32,4 @@ UPDATE servers SET status = 'removed' WHERE discord_guild_id = $1;
 SELECT s.* FROM servers s
 JOIN users u ON s.user_id = u.id
 WHERE s.status = 'active'
-  AND u.subscription_status IN ('trialing', 'active')
-  AND (u.subscription_status != 'trialing' OR u.trial_ends_at > NOW());
+  AND u.subscription_status = 'active';

@@ -11,13 +11,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countOnDemandEverForGuild = `-- name: CountOnDemandEverForGuild :one
+SELECT COUNT(*)::int FROM newsletters n
+JOIN servers s ON s.id = n.server_id
+WHERE s.discord_guild_id = $1
+  AND n.is_on_demand = true
+`
+
+func (q *Queries) CountOnDemandEverForGuild(ctx context.Context, discordGuildID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countOnDemandEverForGuild, discordGuildID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countOnDemandThisMonth = `-- name: CountOnDemandThisMonth :one
+SELECT COUNT(*)::int FROM newsletters
+WHERE server_id = $1
+  AND is_on_demand = true
+  AND created_at >= date_trunc('month', NOW())
+`
+
+func (q *Queries) CountOnDemandThisMonth(ctx context.Context, serverID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countOnDemandThisMonth, serverID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createNewsletter = `-- name: CreateNewsletter :one
 INSERT INTO newsletters (
     server_id, period_start, period_end, status, draft_markdown,
     cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out,
-    error_message
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at
+    error_message, is_on_demand
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand
 `
 
 type CreateNewsletterParams struct {
@@ -32,6 +60,7 @@ type CreateNewsletterParams struct {
 	Pass2TokensIn  int32              `json:"pass2_tokens_in"`
 	Pass2TokensOut int32              `json:"pass2_tokens_out"`
 	ErrorMessage   pgtype.Text        `json:"error_message"`
+	IsOnDemand     bool               `json:"is_on_demand"`
 }
 
 func (q *Queries) CreateNewsletter(ctx context.Context, arg CreateNewsletterParams) (Newsletter, error) {
@@ -47,6 +76,7 @@ func (q *Queries) CreateNewsletter(ctx context.Context, arg CreateNewsletterPara
 		arg.Pass2TokensIn,
 		arg.Pass2TokensOut,
 		arg.ErrorMessage,
+		arg.IsOnDemand,
 	)
 	var i Newsletter
 	err := row.Scan(
@@ -67,12 +97,13 @@ func (q *Queries) CreateNewsletter(ctx context.Context, arg CreateNewsletterPara
 		&i.ErrorMessage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsOnDemand,
 	)
 	return i, err
 }
 
 const getLatestNewsletterByServerID = `-- name: GetLatestNewsletterByServerID :one
-SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at FROM newsletters WHERE server_id = $1 ORDER BY created_at DESC LIMIT 1
+SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand FROM newsletters WHERE server_id = $1 ORDER BY created_at DESC LIMIT 1
 `
 
 func (q *Queries) GetLatestNewsletterByServerID(ctx context.Context, serverID pgtype.UUID) (Newsletter, error) {
@@ -96,12 +127,13 @@ func (q *Queries) GetLatestNewsletterByServerID(ctx context.Context, serverID pg
 		&i.ErrorMessage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsOnDemand,
 	)
 	return i, err
 }
 
 const getNewsletterByID = `-- name: GetNewsletterByID :one
-SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at FROM newsletters WHERE id = $1
+SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand FROM newsletters WHERE id = $1
 `
 
 func (q *Queries) GetNewsletterByID(ctx context.Context, id pgtype.UUID) (Newsletter, error) {
@@ -125,12 +157,13 @@ func (q *Queries) GetNewsletterByID(ctx context.Context, id pgtype.UUID) (Newsle
 		&i.ErrorMessage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsOnDemand,
 	)
 	return i, err
 }
 
 const listNewslettersByServerID = `-- name: ListNewslettersByServerID :many
-SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at FROM newsletters WHERE server_id = $1 ORDER BY created_at DESC
+SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand FROM newsletters WHERE server_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListNewslettersByServerID(ctx context.Context, serverID pgtype.UUID) ([]Newsletter, error) {
@@ -160,6 +193,7 @@ func (q *Queries) ListNewslettersByServerID(ctx context.Context, serverID pgtype
 			&i.ErrorMessage,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.IsOnDemand,
 		); err != nil {
 			return nil, err
 		}
@@ -172,7 +206,7 @@ func (q *Queries) ListNewslettersByServerID(ctx context.Context, serverID pgtype
 }
 
 const updateNewsletterMarkdown = `-- name: UpdateNewsletterMarkdown :one
-UPDATE newsletters SET edited_markdown = $2, updated_at = NOW() WHERE id = $1 RETURNING id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at
+UPDATE newsletters SET edited_markdown = $2, updated_at = NOW() WHERE id = $1 RETURNING id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand
 `
 
 type UpdateNewsletterMarkdownParams struct {
@@ -201,6 +235,7 @@ func (q *Queries) UpdateNewsletterMarkdown(ctx context.Context, arg UpdateNewsle
 		&i.ErrorMessage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsOnDemand,
 	)
 	return i, err
 }

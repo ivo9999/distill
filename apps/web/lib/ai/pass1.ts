@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { anthropic } from "./client";
+import { google } from "./client";
 
 export const StorySchema = z.object({
   story_id: z.string(),
@@ -9,7 +9,7 @@ export const StorySchema = z.object({
   why_it_matters: z.string(),
   engagement_signal: z.number().min(1).max(10),
   key_message_ids: z.array(z.string()),
-  verbatim_snippets: z.array(z.string()).max(2),
+  verbatim_snippets: z.array(z.string()).max(5),
 });
 
 export const Pass1OutputSchema = z.object({
@@ -69,7 +69,7 @@ export async function runPass1(
     .replace("{{MESSAGES_JSON}}", JSON.stringify(messages, null, 2));
 
   const result = await generateObject({
-    model: anthropic(process.env.AI_MODEL_PASS1!),
+    model: google(process.env.AI_MODEL_PASS1 ?? "gemini-2.5-flash"),
     schema: Pass1OutputSchema,
     prompt,
   });

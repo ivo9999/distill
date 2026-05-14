@@ -20,87 +20,130 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const scheduleOptions = [
-  { label: "Sunday 6pm", value: "0 18 * * 0" },
-  { label: "Sunday 9am", value: "0 9 * * 0" },
-  { label: "Monday 9am", value: "0 9 * * 1" },
-  { label: "Monday 6pm", value: "0 18 * * 1" },
-  { label: "Friday 9am", value: "0 9 * * 5" },
-  { label: "Friday 6pm", value: "0 18 * * 5" },
+const dayOptions = [
+  { label: "Sunday", value: "0" },
+  { label: "Monday", value: "1" },
+  { label: "Tuesday", value: "2" },
+  { label: "Wednesday", value: "3" },
+  { label: "Thursday", value: "4" },
+  { label: "Friday", value: "5" },
+  { label: "Saturday", value: "6" },
 ];
 
-interface ServerSettings {
+const hourOptions = [
+  { label: "6am UTC", value: "6" },
+  { label: "9am UTC", value: "9" },
+  { label: "12pm UTC", value: "12" },
+  { label: "3pm UTC", value: "15" },
+  { label: "6pm UTC", value: "18" },
+];
+
+function parseCron(cron: string): { day: string; hour: string } {
+  const parts = cron.split(" ");
+  if (parts.length !== 5) return { day: "0", hour: "18" };
+  return { day: parts[4], hour: parts[1] };
+}
+
+function buildCron(day: string, hour: string): string {
+  return `0 ${hour} * * ${day}`;
+}
+
+interface Channel {
   id: string;
   name: string;
-  community_type: string;
-  schedule_cron: string;
-  channels: string[];
+  discord_channel_id: string;
 }
 
 export default function ServerSettingsPage() {
   const params = useParams();
   const serverId = params.id as string;
 
-  const [server, setServer] = useState<ServerSettings>({
-    id: serverId,
-    name: "My Server",
-    community_type: "",
-    schedule_cron: "0 18 * * 0",
-    channels: [],
-  });
+  const [serverName, setServerName] = useState("");
+  const [guildId, setGuildId] = useState("");
+  const [communityType, setCommunityType] = useState("");
+  const [scheduleDay, setScheduleDay] = useState("0");
+  const [scheduleHour, setScheduleHour] = useState("18");
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [discordChannels, setDiscordChannels] = useState<{ id: string; name: string }[]>([]);
+  const [addingChannel, setAddingChannel] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/proxy/servers/${serverId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.server) {
-          setServer({
-            id: data.server.id,
-            name: data.server.name,
-            community_type: data.server.community_type || "",
-            schedule_cron: data.server.schedule_cron,
-            channels: (data.channels || []).map((c: any) => c.name),
-          });
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    const loadData = async () => {
+      try {
+        const [serverRes, channelsRes] = await Promise.all([
+          fetch(`/api/proxy/servers/${serverId}`),
+          fetch(`/api/proxy/servers/${serverId}/channels`),
+        ]);
+        const server = await serverRes.json();
+        const chs = await channelsRes.json();
+        setServerName(server.name || "");
+        setGuildId(server.discord_guild_id || "");
+        setCommunityType(server.community_type || "");
+        const { day, hour } = parseCron(server.schedule_cron || "0 18 * * 0");
+        setScheduleDay(day);
+        setScheduleHour(hour);
+        setChannels(Array.isArray(chs) ? chs : []);
+      } catch {
+        // ignore
+      }
+      setLoading(false);
+    };
+    loadData();
   }, [serverId]);
 
   const handleSave = async () => {
     setSaving(true);
+    setSaved(false);
     await fetch(`/api/proxy/servers/${serverId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        community_type: server.community_type,
-        schedule_cron: server.schedule_cron,
+        community_type: communityType,
+        schedule_cron: buildCron(scheduleDay, scheduleHour),
       }),
     });
     setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleGenerate = async () => {
-    setGenerating(true);
-    await fetch(`/api/proxy/servers/${serverId}/generate`, { method: "POST" });
-    setGenerating(false);
+  const loadDiscordChannels = async () => {
+    if (!guildId || discordChannels.length > 0) return;
+    const res = await fetch(`/api/proxy/discord/guilds/${guildId}/channels`);
+    const data = await res.json();
+    if (Array.isArray(data)) setDiscordChannels(data);
+  };
+
+  const handleAddChannel = async (discordCh: { id: string; name: string }) => {
+    setAddingChannel(true);
+    const res = await fetch(`/api/proxy/servers/${serverId}/channels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ discord_channel_id: discordCh.id, name: discordCh.name }),
+    });
+    if (res.ok) {
+      const added = await res.json();
+      setChannels((prev) => [...prev, added]);
+    }
+    setAddingChannel(false);
   };
 
   if (loading) {
-    return <div className="text-gray-500">Loading...</div>;
+    return <div className="text-ink-dark">Loading...</div>;
   }
+
+  const monitoredIds = new Set(channels.map((c) => c.discord_channel_id));
+  const availableChannels = discordChannels.filter((dc) => !monitoredIds.has(dc.id));
+
+  const dayLabel = dayOptions.find((d) => d.value === scheduleDay)?.label ?? "Sunday";
+  const hourLabel = hourOptions.find((h) => h.value === scheduleHour)?.label ?? "6pm UTC";
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">{server.name}</h2>
-        <Button onClick={handleGenerate} disabled={generating}>
-          {generating ? "Generating..." : "Generate Now"}
-        </Button>
-      </div>
+      <h2 className="text-2xl font-bold">{serverName}</h2>
 
       <Card>
         <CardHeader>
@@ -116,66 +159,106 @@ export default function ServerSettingsPage() {
             <Input
               id="community-type"
               placeholder="e.g., Developer community, Gaming guild, Startup team"
-              value={server.community_type}
-              onChange={(e) =>
-                setServer({ ...server, community_type: e.target.value })
-              }
+              value={communityType}
+              onChange={(e) => setCommunityType(e.target.value)}
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-ink-dark">
               Helps the AI understand the tone and context of your community.
             </p>
           </div>
 
-          {/* Schedule */}
+          {/* Schedule — Day + Hour */}
           <div className="space-y-2">
-            <Label>Schedule</Label>
-            <Select
-              value={server.schedule_cron}
-              onValueChange={(value) => {
-                if (value) setServer({ ...server, schedule_cron: value });
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select schedule" />
-              </SelectTrigger>
-              <SelectContent>
-                {scheduleOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500">
-              When Distill should generate your weekly newsletter draft.
+            <Label>Newsletter Schedule</Label>
+            <div className="flex gap-3">
+              <Select value={scheduleDay} onValueChange={(v) => { if (v) setScheduleDay(v); }}>
+                <SelectTrigger className="w-full">
+                  <SelectValue>{dayLabel}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {dayOptions.map((d) => (
+                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={scheduleHour} onValueChange={(v) => { if (v) setScheduleHour(v); }}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue>{hourLabel}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {hourOptions.map((h) => (
+                    <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-ink-dark">
+              Distill will generate a newsletter draft every week on this day and time.
             </p>
           </div>
 
           {/* Monitored Channels */}
           <div className="space-y-2">
             <Label>Monitored Channels</Label>
-            {server.channels.length > 0 ? (
+            {channels.length > 0 ? (
               <ul className="space-y-1">
-                {server.channels.map((channel) => (
+                {channels.map((channel) => (
                   <li
-                    key={channel}
-                    className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 px-3 py-2 rounded-md"
+                    key={channel.id}
+                    className="flex items-center justify-between text-sm text-ink bg-ink-lightest px-3 py-2 rounded-md"
                   >
-                    <span className="text-gray-400">#</span>
-                    {channel}
+                    <div className="flex items-center gap-2">
+                      <span className="text-ink-medium">#</span>
+                      {channel.name}
+                    </div>
+                    <button
+                      className="text-xs text-negative hover:text-negative cursor-pointer"
+                      onClick={async () => {
+                        await fetch(
+                          `/api/proxy/servers/${serverId}/channels/${channel.discord_channel_id}`,
+                          { method: "DELETE" }
+                        );
+                        setChannels((prev) => prev.filter((c) => c.id !== channel.id));
+                      }}
+                    >
+                      Remove
+                    </button>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-500 bg-gray-50 px-3 py-4 rounded-md text-center">
-                No channels configured yet. Channels will appear here once the
-                bot is added to your server.
+              <p className="text-sm text-ink-dark bg-ink-lightest px-3 py-4 rounded-md text-center">
+                No channels monitored yet. Add channels below.
               </p>
+            )}
+            {discordChannels.length === 0 ? (
+              <Button variant="outline" size="sm" onClick={loadDiscordChannels}>
+                + Add channel
+              </Button>
+            ) : availableChannels.length > 0 ? (
+              <div className="space-y-1">
+                <p className="text-xs text-ink-dark">Select a channel to monitor:</p>
+                {availableChannels.map((dc) => (
+                  <button
+                    key={dc.id}
+                    disabled={addingChannel}
+                    className="flex items-center gap-2 w-full text-left text-sm text-ink-dark hover:bg-ink-lightest px-3 py-2 rounded-md cursor-pointer disabled:opacity-50"
+                    onClick={() => handleAddChannel(dc)}
+                  >
+                    <span className="text-ink-medium">#</span>
+                    {dc.name}
+                    <span className="ml-auto text-xs text-blue-500">+ Add</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-ink-medium">All channels are already monitored.</p>
             )}
           </div>
 
           {/* Save */}
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-3">
+            {saved && <span className="text-sm text-green-600">Saved!</span>}
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "Save"}
             </Button>

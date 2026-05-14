@@ -112,7 +112,7 @@ export default function IntegrationsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Integrations</h2>
-        <p className="text-gray-600 mt-1">
+        <p className="text-ink-dark mt-1">
           Connect your newsletter platform to publish directly from Distill.
         </p>
       </div>
@@ -136,7 +136,7 @@ export default function IntegrationsPage() {
             <CardContent>
               {integration.connected ? (
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-ink-dark">
                     Your {integration.name} account is connected and ready to
                     publish.
                   </p>

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Config holds all environment configuration.
@@ -20,6 +21,7 @@ type Config struct {
 	EncryptionKey       string
 	AppBaseURL          string
 	LogLevel            string
+	AdminUserIDs        []string
 }
 
 // Load reads config from environment variables.
@@ -44,6 +46,13 @@ func Load() (*Config, error) {
 	}
 	if c.LogLevel == "" {
 		c.LogLevel = "info"
+	}
+	if adminIDs := os.Getenv("ADMIN_USER_IDS"); adminIDs != "" {
+		for _, id := range strings.Split(adminIDs, ",") {
+			if trimmed := strings.TrimSpace(id); trimmed != "" {
+				c.AdminUserIDs = append(c.AdminUserIDs, trimmed)
+			}
+		}
 	}
 	return c, nil
 }

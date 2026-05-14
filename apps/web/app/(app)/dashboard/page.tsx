@@ -1,10 +1,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Calendar, ArrowRight, Sparkles, Settings as SettingsIcon, FileText, Loader2, AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+
+function humanCron(cron: string): string {
+  const parts = cron.split(" ");
+  if (parts.length !== 5) return cron;
+  const hour = parseInt(parts[1], 10);
+  const dow = parts[4];
+  const dayNames: Record<string, string> = {
+    "0": "Sunday",
+    "1": "Monday",
+    "2": "Tuesday",
+    "3": "Wednesday",
+    "4": "Thursday",
+    "5": "Friday",
+    "6": "Saturday",
+    "*": "day",
+  };
+  const h = hour % 12 || 12;
+  const ampm = hour < 12 ? "AM" : "PM";
+  const time = `${h}:00 ${ampm} UTC`;
+  if (dow === "*") return `Every day at ${time}`;
+  const days = dow.split(",").map((d) => dayNames[d] || d).join(", ");
+  return `Every ${days} at ${time}`;
+}
 
 interface Server {
   id: string;
@@ -15,76 +42,223 @@ interface Server {
   community_type: string | null;
 }
 
+interface Quota {
+  used: number;
+  limit: number;
+  remaining: number;
+  tier: string;
+}
+
+const accentByIndex = [
+  "bg-accent-7",
+  "bg-accent-5",
+  "bg-accent-2",
+  "bg-accent-6",
+  "bg-accent-8",
+  "bg-accent-4",
+];
+
 export default function DashboardPage() {
+  const router = useRouter();
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [quotas, setQuotas] = useState<Record<string, Quota>>({});
 
   useEffect(() => {
     fetch("/api/proxy/servers")
       .then((r) => r.json())
       .then((data) => {
-        setServers(Array.isArray(data) ? data : []);
+        const s = Array.isArray(data) ? data : [];
+        setServers(s);
         setLoading(false);
+        s.forEach((server: Server) => {
+          fetch(`/api/proxy/servers/${server.id}/generation-quota`)
+            .then((r) => r.json())
+            .then((q) => setQuotas((prev) => ({ ...prev, [server.id]: q })))
+            .catch(() => {});
+        });
       })
       .catch(() => setLoading(false));
   }, []);
 
   if (loading) {
-    return <div className="text-gray-500">Loading...</div>;
-  }
-
-  if (servers.length === 0) {
     return (
-      <div className="text-center py-16">
-        <h2 className="text-2xl font-bold mb-4">Welcome to Distill</h2>
-        <p className="text-gray-600 mb-8">
-          Get started by connecting your Discord server.
-        </p>
-        <Link href="/dashboard/onboarding">
-          <Button size="lg">Set up your first server</Button>
-        </Link>
+      <div className="space-y-3">
+        <Skeleton className="h-9 w-48" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
       </div>
     );
   }
 
+  if (servers.length === 0) {
+    return (
+      <Card className="mx-auto max-w-xl text-center">
+        <CardContent className="flex flex-col items-center gap-4 py-12">
+          <div className="flex h-12 w-12 items-center justify-center rounded-pill bg-accent-7/20 text-accent-7">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold tracking-tight">Welcome to Distill</h2>
+            <p className="text-sm text-ink-dark">
+              Connect your first Discord server to get started. Your first
+              generation is free.
+            </p>
+          </div>
+          <Link href="/dashboard/onboarding">
+            <Button size="lg" className="rounded-pill">
+              Set up your first server
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const handleGenerate = async (serverId: string) => {
+    setGeneratingId(serverId);
+    setGenerateError(null);
+    const res = await fetch(`/api/proxy/servers/${serverId}/generate-now`, {
+      method: "POST",
+    });
+    let data: { saved?: boolean; id?: string; error?: string; tier?: string } = {};
+    try {
+      data = await res.json();
+    } catch {
+      data = { error: "Unexpected response from server" };
+    }
+    setGeneratingId(null);
+    if (res.ok && data.saved && data.id) {
+      setQuotas((prev) => {
+        const q = prev[serverId];
+        if (q) return { ...prev, [serverId]: { ...q, used: q.used + 1, remaining: q.remaining - 1 } };
+        return prev;
+      });
+      router.push(`/dashboard/servers/${serverId}/newsletters/${data.id}`);
+    } else {
+      setGenerateError(data.error || "Failed to generate. Please try again.");
+    }
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Your Servers</h2>
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Your servers</h1>
+          <p className="mt-1 text-sm text-ink-dark">
+            Generate weekly newsletter drafts from your Discord communities.
+          </p>
+        </div>
+        <Link href="/dashboard/onboarding">
+          <Button variant="outline" size="sm">
+            Add another server
+          </Button>
+        </Link>
       </div>
-      <div className="grid gap-4">
-        {servers.map((server) => (
-          <Card key={server.id}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">{server.name}</CardTitle>
-              <Badge
-                variant={
-                  server.status === "active" ? "default" : "secondary"
-                }
-              >
-                {server.status}
-              </Badge>
-            </CardHeader>
-            <CardContent className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">
-                Schedule: {server.schedule_cron}
-              </span>
-              <div className="flex gap-2">
-                <Link href={`/dashboard/servers/${server.id}`}>
-                  <Button variant="outline" size="sm">
-                    Settings
+
+      <div className="grid gap-3">
+        {servers.map((server, i) => {
+          const quota = quotas[server.id];
+          const isGenerating = generatingId === server.id;
+          const exhausted = quota && quota.remaining <= 0;
+          const isFree = quota?.tier === "free";
+          const accent = accentByIndex[i % accentByIndex.length];
+
+          return (
+            <Card key={server.id} className="overflow-hidden">
+              <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-3 min-w-0">
+                  <span
+                    className={cn(
+                      "mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-pill text-sm font-bold text-ink-inverted",
+                      accent,
+                    )}
+                  >
+                    {server.name?.[0]?.toUpperCase() ?? "?"}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="truncate text-base font-semibold">{server.name}</h3>
+                      <Badge variant={server.status === "active" ? "default" : "secondary"}>
+                        {server.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-dark">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {humanCron(server.schedule_cron)}
+                      </span>
+                      {quota && (
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-pill border px-2 py-0.5",
+                            isFree
+                              ? exhausted
+                                ? "border-warning/40 text-warning"
+                                : "border-positive/40 text-positive"
+                              : "border-ink-lighter",
+                          )}
+                        >
+                          {isFree
+                            ? exhausted
+                              ? "Free generation used"
+                              : "1 free generation available"
+                            : `${quota.remaining}/${quota.limit} on-demand`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleGenerate(server.id)}
+                    disabled={isGenerating || exhausted}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        Generating
+                      </>
+                    ) : exhausted ? (
+                      isFree ? "Subscribe to generate" : "Limit reached"
+                    ) : (
+                      <>
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        {isFree ? "Try free" : "Generate now"}
+                      </>
+                    )}
                   </Button>
-                </Link>
-                <Link href={`/dashboard/servers/${server.id}/newsletters`}>
-                  <Button variant="outline" size="sm">
-                    Newsletters
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                  <Link href={`/dashboard/servers/${server.id}/newsletters`}>
+                    <Button variant="ghost" size="sm">
+                      <FileText className="mr-1.5 h-3.5 w-3.5" />
+                      Drafts
+                    </Button>
+                  </Link>
+                  <Link href={`/dashboard/servers/${server.id}`}>
+                    <Button variant="ghost" size="sm">
+                      <SettingsIcon className="mr-1.5 h-3.5 w-3.5" />
+                      Settings
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
+
+      {generateError && (
+        <div className="mt-4 flex items-start gap-2 rounded-card border border-negative/30 bg-negative/10 px-4 py-3 text-sm text-negative">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          {generateError}
+        </div>
+      )}
     </div>
   );
 }

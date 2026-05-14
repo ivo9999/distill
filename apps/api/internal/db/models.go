@@ -51,6 +51,7 @@ type Newsletter struct {
 	ErrorMessage   pgtype.Text        `json:"error_message"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	IsOnDemand     bool               `json:"is_on_demand"`
 }
 
 type Optout struct {

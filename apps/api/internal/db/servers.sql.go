@@ -98,8 +98,7 @@ const listActiveServersForSchedule = `-- name: ListActiveServersForSchedule :man
 SELECT s.id, s.user_id, s.discord_guild_id, s.name, s.icon_url, s.community_type, s.schedule_cron, s.status, s.created_at FROM servers s
 JOIN users u ON s.user_id = u.id
 WHERE s.status = 'active'
-  AND u.subscription_status IN ('trialing', 'active')
-  AND (u.subscription_status != 'trialing' OR u.trial_ends_at > NOW())
+  AND u.subscription_status = 'active'
 `
 
 func (q *Queries) ListActiveServersForSchedule(ctx context.Context) ([]Server, error) {

@@ -2,7 +2,9 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -206,6 +208,24 @@ func triggerGenerate(s *Server) http.HandlerFunc {
 			return
 		}
 
+		// Free-tier gate (manual triggers count as on-demand).
+		user, err := s.Queries.GetUserByID(r.Context(), userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to get user")
+			return
+		}
+		if user.SubscriptionStatus != "active" {
+			guildUsed, err := s.Queries.CountOnDemandEverForGuild(r.Context(), server.DiscordGuildID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to count guild generations")
+				return
+			}
+			if guildUsed >= 1 {
+				writeError(w, http.StatusPaymentRequired, "free tier limit reached: subscribe to generate more")
+				return
+			}
+		}
+
 		if s.RiverClient == nil {
 			writeError(w, http.StatusServiceUnavailable, "job queue not available")
 			return
@@ -220,6 +240,98 @@ func triggerGenerate(s *Server) http.HandlerFunc {
 		}
 
 		writeJSON(w, http.StatusAccepted, map[string]string{"status": "queued"})
+	}
+}
+
+func listMessages(s *Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.UserIDFromContext(r.Context())
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		var serverID pgtype.UUID
+		if err := serverID.Scan(chi.URLParam(r, "serverID")); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid server ID")
+			return
+		}
+
+		server, err := s.Queries.GetServerByID(r.Context(), serverID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "server not found")
+			return
+		}
+		if server.UserID != userID {
+			writeError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+
+		now := time.Now()
+		oneWeekAgo := now.AddDate(0, 0, -7)
+
+		var start, end pgtype.Timestamptz
+		start.Time = oneWeekAgo
+		start.Valid = true
+		end.Time = now
+		end.Valid = true
+
+		messages, err := s.Queries.GetMessagesForGeneration(r.Context(), db.GetMessagesForGenerationParams{
+			ServerID: serverID,
+			SentAt:   start,
+			SentAt_2: end,
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to list messages")
+			return
+		}
+
+		// Build channel name lookup
+		channels, _ := s.Queries.ListMonitoredChannels(r.Context(), serverID)
+		channelNames := make(map[string]string)
+		for _, ch := range channels {
+			uid := fmt.Sprintf("%x-%x-%x-%x-%x",
+				ch.ID.Bytes[0:4], ch.ID.Bytes[4:6], ch.ID.Bytes[6:8], ch.ID.Bytes[8:10], ch.ID.Bytes[10:16])
+			channelNames[uid] = ch.Name
+		}
+
+		type messageResponse struct {
+			ID            string `json:"id"`
+			AuthorID      string `json:"author_id"`
+			AuthorName    string `json:"author_name"`
+			Content       string `json:"content"`
+			Timestamp     string `json:"timestamp"`
+			ReactionCount int32  `json:"reaction_count"`
+			ReplyCount    int32  `json:"reply_count"`
+			ReplyToID     string `json:"reply_to_id,omitempty"`
+			ThreadID      string `json:"thread_id,omitempty"`
+			ChannelName   string `json:"channel_name"`
+		}
+
+		resp := make([]messageResponse, 0, len(messages))
+		for _, m := range messages {
+			chID := fmt.Sprintf("%x-%x-%x-%x-%x",
+				m.ChannelID.Bytes[0:4], m.ChannelID.Bytes[4:6], m.ChannelID.Bytes[6:8], m.ChannelID.Bytes[8:10], m.ChannelID.Bytes[10:16])
+			mr := messageResponse{
+				ID:            m.DiscordMessageID,
+				AuthorID:      m.DiscordAuthorID,
+				AuthorName:    m.AuthorDisplayName,
+				Content:       m.Content,
+				Timestamp:     m.SentAt.Time.Format(time.RFC3339),
+				ReactionCount: m.ReactionCount,
+				ReplyCount:    m.ReplyCount,
+				ChannelName:   channelNames[chID],
+			}
+			if m.ReplyToDiscordID.Valid {
+				mr.ReplyToID = m.ReplyToDiscordID.String
+			}
+			if m.ThreadDiscordID.Valid {
+				mr.ThreadID = m.ThreadDiscordID.String
+			}
+			resp = append(resp, mr)
+		}
+
+		writeJSON(w, http.StatusOK, resp)
 	}
 }
 

@@ -56,6 +56,8 @@ func NewRouter(s *Server) http.Handler {
 		r.Get("/api/servers/{serverID}", getServer(s))
 		r.Patch("/api/servers/{serverID}", updateServer(s))
 		r.Post("/api/servers/{serverID}/generate", triggerGenerate(s))
+		r.Get("/api/servers/{serverID}/messages", listMessages(s))
+		r.Get("/api/servers/{serverID}/generation-quota", getGenerationQuota(s))
 
 		// Channels
 		r.Get("/api/servers/{serverID}/channels", listChannels(s))
@@ -63,6 +65,7 @@ func NewRouter(s *Server) http.Handler {
 		r.Delete("/api/servers/{serverID}/channels/{channelID}", removeChannel(s))
 
 		// Newsletters
+		r.Post("/api/servers/{serverID}/newsletters", createNewsletter(s))
 		r.Get("/api/servers/{serverID}/newsletters", listNewsletters(s))
 		r.Get("/api/newsletters/{newsletterID}", getNewsletter(s))
 		r.Patch("/api/newsletters/{newsletterID}", updateNewsletter(s))
@@ -76,6 +79,9 @@ func NewRouter(s *Server) http.Handler {
 		// Billing
 		r.Post("/api/billing/checkout", createCheckout(s))
 		r.Post("/api/billing/portal", createPortal(s))
+
+		// Admin
+		r.Get("/api/admin/dashboard", adminDashboard(s))
 	})
 
 	return r
