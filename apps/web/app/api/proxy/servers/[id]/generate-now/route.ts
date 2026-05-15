@@ -65,13 +65,77 @@ export async function POST(
     channelName: m.channel_name,
   }));
 
-  // 5. Run the AI pipeline
+  // 5. Run the AI pipeline.
+  //
+  // Wrapped so schema-validation / timeout / model-rate-limit errors
+  // become structured user-facing messages instead of bubbling up as
+  // a generic 500. Three classes of failure we surface specifically:
+  //
+  //   - Zod validation ("Too small / Too large") → almost always a
+  //     thin Discord week the model honestly couldn't fill. After the
+  //     min(1) schema fix, this should be rare but worth surfacing.
+  //   - Model timeout (DeadlineExceeded / abort) → transient, the user
+  //     should retry; not their fault.
+  //   - Anything else → real bug, log + show a generic message but
+  //     mark the error category so support can correlate.
   const communityType = server.community_type || "general";
-  const result = await runPipeline({
-    communityType,
-    serverName: server.name,
-    messages: allMessages,
-  });
+  let result;
+  try {
+    result = await runPipeline({
+      communityType,
+      serverName: server.name,
+      messages: allMessages,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[generate-now] pipeline failed", err);
+    // Schema-validation: the model returned a shape Zod rejected.
+    // Usually means thin week / not enough stories worth telling.
+    if (/Type validation failed|ZodError|too_small|too_big/i.test(msg)) {
+      return NextResponse.json(
+        {
+          error:
+            "We couldn't find enough material in this week's messages to write a draft. Try again next week, or pick a Discord with more channels selected.",
+          category: "thin_week",
+        },
+        { status: 422 },
+      );
+    }
+    // Model timeout / abort — Gemini occasionally times out on long
+    // contexts; one retry usually clears it.
+    if (/DeadlineExceeded|aborted|timeout|ETIMEDOUT/i.test(msg)) {
+      return NextResponse.json(
+        {
+          error:
+            "The model timed out reading your week. Try again — usually clears in a minute.",
+          category: "timeout",
+        },
+        { status: 504 },
+      );
+    }
+    // Quota / rate limit from Gemini.
+    if (/quota|rate.?limit|RESOURCE_EXHAUSTED|429/i.test(msg)) {
+      return NextResponse.json(
+        {
+          error:
+            "We're rate-limited by the model provider right now. Try again in a few minutes.",
+          category: "rate_limit",
+        },
+        { status: 503 },
+      );
+    }
+    // Catch-all. Don't leak stack frames to the UI but keep enough
+    // signal that the user can tell us "it failed at generation
+    // time" vs "it failed at save time."
+    return NextResponse.json(
+      {
+        error:
+          "Generation failed. We've logged it — please try again, and if it keeps failing, drop us a line.",
+        category: "internal",
+      },
+      { status: 500 },
+    );
+  }
 
   // 6. Save newsletter via Go API (marked as on-demand)
   const saveRes = await goFetch(`/api/servers/${id}/newsletters`, {

@@ -12,8 +12,15 @@ export const StorySchema = z.object({
   verbatim_snippets: z.array(z.string()).max(5),
 });
 
+// Floor is 1 deliberately. The PRD's original min(3) was an editorial
+// ideal — a great week should have 3+ stories — but it doubled as a
+// schema floor, which on thin weeks made the whole generation fail
+// loudly when Gemini honestly returned 1-2 stories. The marketing
+// promise is "a slow week produces a short, honest email — 'here's the
+// one good thread, see you next week'", so the schema should match the
+// promise. Pass-2's prompt does the editorial cutting from there.
 export const Pass1OutputSchema = z.object({
-  stories: z.array(StorySchema).min(3).max(15),
+  stories: z.array(StorySchema).min(1).max(15),
 });
 
 export type Story = z.infer<typeof StorySchema>;
@@ -21,7 +28,7 @@ export type Pass1Output = z.infer<typeof Pass1OutputSchema>;
 
 const PASS1_PROMPT = `You are a community editor analyzing one week of Discord messages from {{COMMUNITY_TYPE}}.
 
-Your job is to find the 10–15 conversations from this week that would make the best content for a weekly newsletter sent to people who are NOT in the Discord. The newsletter readers care about:
+Your job is to find every conversation from this week that would make good content for a weekly newsletter sent to people who are NOT in the Discord. A great week might have 10+; a quiet week might have 1-2; both are fine. Do NOT invent stories or pad the list — readers can tell. The newsletter readers care about:
 - Wins and launches by community members
 - Substantive technical debates and "I learned X" moments
 - Useful resources shared (links, tools, tips)
@@ -42,7 +49,7 @@ For each story candidate, return:
   "verbatim_snippets": ["short direct quotes if essential, max 1-2 per story, max 15 words each"]
 }
 
-Return ONLY a valid JSON array of 10–15 stories ranked by engagement_signal descending. No prose before or after the JSON.
+Return ONLY a JSON object with a "stories" array, sorted by engagement_signal descending. Include only stories that genuinely happened — if the week was thin, return 1 or 2, not a forced 10. The drafter downstream will write what you give it; padding becomes obvious filler.
 
 Here are this week's messages:
 {{MESSAGES_JSON}}`;
