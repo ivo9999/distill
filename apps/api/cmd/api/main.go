@@ -32,6 +32,21 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Run application schema migrations before anything else touches the
+	// database. Idempotent — on a healthy cluster this is a 1-2ms noop
+	// that logs "schema already up to date". On a fresh deploy it's the
+	// difference between sign-in working and a confusing AccessDenied
+	// screen. Migrations dir is overridable for tests; default matches
+	// the Dockerfile's COPY layout.
+	migrationsDir := os.Getenv("MIGRATIONS_DIR")
+	if migrationsDir == "" {
+		migrationsDir = "./migrations"
+	}
+	if err := db.RunMigrations(cfg.DatabaseURL, migrationsDir); err != nil {
+		slog.Error("failed to run migrations", "err", err)
+		os.Exit(1)
+	}
+
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("failed to connect to database", "err", err)
