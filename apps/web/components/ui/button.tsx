@@ -21,9 +21,16 @@ const buttonVariants = cva(
         // Fizzy default: white canvas, ink text, hairline ink-light border, pill
         default:
           "bg-canvas text-ink border border-ink-light",
-        // Primary call-to-action: blue, white text, canvas-colored border (matches Fizzy --btn--link)
+        // Primary call-to-action: deep brand purple, white text, canvas
+        // border. --link is repointed to --brand in globals.css so every
+        // existing primary-button site picks up the brand automatically.
         primary:
-          "bg-link text-ink-inverted border border-canvas",
+          "bg-brand text-brand-foreground border border-canvas",
+        // Discord-flavoured action: signals "this connects to your Discord"
+        // (bot install, server picker, /distill commands). Use sparingly so
+        // it stays meaningful — primary CTAs should still be `primary`.
+        discord:
+          "bg-brand-discord text-brand-discord-foreground border border-canvas",
         // Destructive / negative
         destructive:
           "bg-negative text-ink-inverted border border-negative",

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandMark } from "@/components/brand-mark";
 import { cn } from "@/lib/utils";
 import { LogOut, User, Shield, Plug } from "lucide-react";
 
@@ -202,17 +203,5 @@ export function DashboardShell({
 }
 
 function Logo() {
-  return (
-    <span className="relative inline-flex h-7 w-7 items-center justify-center">
-      <span
-        aria-hidden
-        className="absolute inset-0 rounded-[40%_60%_55%_45%/_50%_55%_45%_50%] bg-accent-7"
-        style={{ filter: "saturate(0.85)" }}
-      />
-      <span
-        aria-hidden
-        className="absolute inset-1 rounded-[55%_45%_60%_40%/_45%_55%_50%_50%] bg-accent-5/80"
-      />
-    </span>
-  );
+  return <BrandMark className="h-6 w-auto" />;
 }

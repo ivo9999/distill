@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Distill">
+  <title>Distill</title>
+  <rect width="180" height="180" rx="42" fill="#3C116E"/>
+  <g transform="translate(57 35) scale(0.74)">
+    <path d="M 45 0
+             C 65 25, 90 55, 90 80
+             A 45 45 0 1 1 0 80
+             C 0 55, 25 25, 45 0 Z"
+          fill="#FAFAFA"/>
+  </g>
+</svg>

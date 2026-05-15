@@ -18,9 +18,9 @@ export function SubscribeBanner() {
   };
 
   return (
-    <div className="mb-6 flex flex-col gap-3 rounded-card border border-accent-2/40 bg-accent-2/10 p-4 md:flex-row md:items-center md:justify-between">
+    <div className="mb-6 flex flex-col gap-3 rounded-card border border-brand-warm/40 bg-brand-warm/10 p-4 md:flex-row md:items-center md:justify-between">
       <div className="flex items-start gap-3">
-        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand-warm" />
         <div>
           <p className="text-sm font-medium text-ink">
             You're on the free plan

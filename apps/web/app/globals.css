@@ -141,7 +141,24 @@
   --ink-lighter: oklch(var(--lch-ink-lighter));
   --ink-lightest: oklch(var(--lch-ink-lightest));
 
-  --link:           oklch(var(--lch-blue-dark));
+  /* Brand palette. --brand is the deep logo purple and powers every
+     primary CTA / link surface. --brand-discord is the secondary
+     Discord-blue, used for community-flavoured accents (the bot card,
+     "connect Discord" affordances, the cron-trigger badge). The other
+     three are reserved accents — high-saturation, used sparingly
+     where they fit (e.g. error states pick up --brand-hot via the
+     existing --negative semantic var). All are concrete RGB hexes so
+     marketing copy stays on-spec across renderers. */
+  --brand:                #3C116E;
+  --brand-foreground:     oklch(98% 0 0);    /* near-white on brand */
+  --brand-soft:           color-mix(in oklch, #3C116E 12%, transparent);
+  --brand-discord:        #6C93F8;
+  --brand-discord-foreground: oklch(15% 0 0);
+  --brand-warm:           #E4732D;
+  --brand-hot:            #C1171E;
+  --brand-bright:         #761DF1;
+
+  --link:           var(--brand);
   --negative:       oklch(var(--lch-red-dark));
   --positive:       oklch(var(--lch-green-dark));
   --warning:        oklch(var(--lch-yellow-dark));
@@ -284,6 +301,17 @@
   /* Highlight reads better as blue in dark mode */
   --highlight: oklch(var(--lch-blue-lighter));
 
+  /* Brand palette in dark mode. The deep logo purple disappears on
+     a near-black canvas, so we lift it to a brighter, slightly more
+     violet shade for readable text + button surfaces. Discord-blue is
+     already bright enough to stay; we just soften its foreground so
+     dark-on-blue stays legible. */
+  --brand:                #8B5CF6;
+  --brand-foreground:     oklch(15% 0 0);
+  --brand-soft:           color-mix(in oklch, #8B5CF6 18%, transparent);
+  --brand-discord:        #6C93F8;
+  --brand-discord-foreground: oklch(15% 0 0);
+
   --shadow:
     0 0 0 1px oklch(0% 0 0 / 0.42),
     0 0.2em 1.6em -0.8em oklch(0% 0 0 / 0.6),
@@ -322,6 +350,18 @@
   --color-selected: var(--selected);
   --color-selected-light: var(--selected-light);
   --color-selected-dark: var(--selected-dark);
+
+  /* Brand utilities. Use bg-brand / text-brand for the primary
+     deep-purple surface, bg-brand-discord for Discord-flavoured
+     accents, brand-warm/hot/bright for sparing highlight roles. */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-discord: var(--brand-discord);
+  --color-brand-discord-foreground: var(--brand-discord-foreground);
+  --color-brand-warm: var(--brand-warm);
+  --color-brand-hot: var(--brand-hot);
+  --color-brand-bright: var(--brand-bright);
 
   --color-accent-1: var(--accent-1);
   --color-accent-2: var(--accent-2);

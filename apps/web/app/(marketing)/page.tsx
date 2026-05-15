@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { signInWithDiscord } from "@/app/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -87,16 +88,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 border-b border-ink-lighter/60 bg-canvas/70 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="relative inline-flex h-7 w-7 items-center justify-center">
-              <span
-                aria-hidden
-                className="absolute inset-0 rounded-[40%_60%_55%_45%/_50%_55%_45%_50%] bg-accent-7"
-              />
-              <span
-                aria-hidden
-                className="absolute inset-1 rounded-[55%_45%_60%_40%/_45%_55%_50%_50%] bg-accent-5/80"
-              />
-            </span>
+            <BrandMark className="h-6 w-auto" />
             distill
           </Link>
           <div className="hidden items-center gap-6 sm:flex">
@@ -134,7 +126,7 @@ export default function LandingPage() {
           </span>
           <h1 className="mb-6 text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
             Your Discord wrote your newsletter.{" "}
-            <span className="bg-gradient-to-br from-accent-7 to-accent-5 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-br from-brand to-brand-discord bg-clip-text text-transparent">
               Nobody outside sees it.
             </span>
           </h1>
@@ -185,7 +177,7 @@ export default function LandingPage() {
                 days straight, and a quiet member&apos;s side project hit the
                 front page of Hacker News.
               </p>
-              <div className="border-l-2 border-accent-7 pl-5 py-1">
+              <div className="border-l-2 border-brand pl-5 py-1">
                 <p className="text-sm font-semibold">
                   ## The tool that broke the star counter
                 </p>
@@ -244,21 +236,26 @@ export default function LandingPage() {
                 n: "1",
                 title: "Point it at your server",
                 desc: "Add the Distill bot and choose channels to watch. Two minutes.",
-                accent: "bg-accent-7",
+                // Step 1 is the Discord-connection step — wear the Discord-blue
+                // accent so the colour anchors the action to what's happening.
+                accent: "bg-brand-discord",
               },
               {
                 icon: Zap,
                 n: "2",
                 title: "A draft appears every Sunday",
                 desc: "Distill reads the week's conversations, finds the best moments, and writes them up.",
-                accent: "bg-accent-5",
+                // Step 2 is "Distill does the work" — primary brand purple.
+                accent: "bg-brand",
               },
               {
                 icon: Send,
                 n: "3",
                 title: "Make it yours and publish",
                 desc: "Edit in markdown. Add your voice. Push to your newsletter platform.",
-                accent: "bg-accent-2",
+                // Step 3 is "ship it" — the warm accent (orange) signals action +
+                // closes the colour loop (cool → cool → warm).
+                accent: "bg-brand-warm",
               },
             ].map((step) => (
               <div
@@ -302,8 +299,8 @@ export default function LandingPage() {
                 key={f.title}
                 className="rounded-xl border border-ink-lighter bg-canvas p-6 shadow-card transition-colors hover:bg-ink-lightest/40"
               >
-                <div className="mb-4 flex size-9 items-center justify-center rounded-lg bg-accent-6/15">
-                  <f.icon className="size-4 text-accent-6" strokeWidth={1.6} />
+                <div className="mb-4 flex size-9 items-center justify-center rounded-lg bg-brand-soft">
+                  <f.icon className="size-4 text-brand" strokeWidth={1.6} />
                 </div>
                 <h3 className="mb-1.5 text-sm font-semibold">{f.title}</h3>
                 <p className="text-sm leading-relaxed text-ink-dark">{f.desc}</p>
@@ -350,9 +347,9 @@ export default function LandingPage() {
             </div>
 
             {/* Pro */}
-            <div className="relative flex flex-col rounded-xl border-2 border-accent-7 bg-canvas p-7 shadow-card">
+            <div className="relative flex flex-col rounded-xl border-2 border-brand bg-canvas p-7 shadow-card">
               <div className="absolute -top-3 left-7">
-                <span className="rounded-pill bg-accent-7 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-inverted">
+                <span className="rounded-pill bg-brand px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
                   Recommended
                 </span>
               </div>
@@ -433,10 +430,7 @@ export default function LandingPage() {
       <footer className="relative border-t border-ink-lighter">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
           <span className="flex items-center gap-2 text-sm font-bold tracking-tight">
-            <span className="relative inline-flex h-6 w-6 items-center justify-center">
-              <span aria-hidden className="absolute inset-0 rounded-[40%_60%_55%_45%/_50%_55%_45%_50%] bg-accent-7" />
-              <span aria-hidden className="absolute inset-1 rounded-[55%_45%_60%_40%/_45%_55%_50%_50%] bg-accent-5/80" />
-            </span>
+            <BrandMark className="h-5 w-auto" />
             distill
           </span>
           <div className="flex items-center gap-6 text-xs text-ink-medium">

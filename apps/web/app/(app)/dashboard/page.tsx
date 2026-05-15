@@ -49,13 +49,18 @@ interface Quota {
   tier: string;
 }
 
+// Per-server avatar colour rotation. The first server a user adds gets the
+// brand purple so their primary workspace reads as on-brand; the second
+// gets Discord-blue (signalling the bot connection), then the reserved
+// accent triad. Beyond six servers the rotation wraps — distinct enough
+// to tell adjacent cards apart.
 const accentByIndex = [
-  "bg-accent-7",
+  "bg-brand",
+  "bg-brand-discord",
+  "bg-brand-warm",
+  "bg-brand-bright",
+  "bg-brand-hot",
   "bg-accent-5",
-  "bg-accent-2",
-  "bg-accent-6",
-  "bg-accent-8",
-  "bg-accent-4",
 ];
 
 export default function DashboardPage() {
@@ -97,7 +102,7 @@ export default function DashboardPage() {
     return (
       <Card className="mx-auto max-w-xl text-center">
         <CardContent className="flex flex-col items-center gap-4 py-12">
-          <div className="flex h-12 w-12 items-center justify-center rounded-pill bg-accent-7/20 text-accent-7">
+          <div className="flex h-12 w-12 items-center justify-center rounded-pill bg-brand-soft text-brand">
             <Sparkles className="h-5 w-5" />
           </div>
           <div className="space-y-1">

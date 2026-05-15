@@ -12,6 +12,19 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Distill",
   description: "Your Discord wrote your newsletter this week.",
+  icons: {
+    // Browser tab + bookmark bar. SVG is sharp at every size and pulls
+    // the brand droplet straight from public/icon.svg.
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    // iOS Add-to-Home-Screen + macOS pinned-tab. Uses the rounded-square
+    // app-icon variant (white droplet on brand-purple field) so the
+    // mark reads at small sizes on a coloured home-screen background.
+    apple: [
+      { url: "/apple-touch-icon.svg", sizes: "180x180", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export default function RootLayout({

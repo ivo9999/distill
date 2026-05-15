@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 130" role="img" aria-label="Distill icon">
+  <title>Distill</title>
+  <path d="M 45 0
+           C 65 25, 90 55, 90 80
+           A 45 45 0 1 1 0 80
+           C 0 55, 25 25, 45 0 Z"
+        fill="#3C116E"/>
+</svg>
