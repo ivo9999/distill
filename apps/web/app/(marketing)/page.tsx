@@ -1,446 +1,633 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Check,
-  Zap,
-  Shield,
-  Send,
-  Plug,
-  PenLine,
-  Target,
-  MessageSquare,
-  Clock,
-} from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { signInWithDiscord } from "@/app/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
+import { FAQ } from "./_components/faq";
 import { cn } from "@/lib/utils";
 
+/* -----------------------------------------------------------------------
+   Distill landing. Voice + composition rules:
+
+   - Open with the inbox-shame, not the feature. The reader feels seen
+     before they hear the pitch.
+   - One specific number per section. "1,243 messages → 6 stories →
+     10-minute edit." A real claim, not a vibe.
+   - No "AI" copy. The reader has seen 200 GPT wrappers. We say editor,
+     reader, summary, writer.
+   - No gradient text. No pill chips. No fake product screenshots. The
+     right-column hero artifact is the actual markdown a draft looks
+     like — paste-able, real.
+   - Section labels are a `// mono comment` so they read as captions
+     and ground the page in a builder aesthetic.
+   --------------------------------------------------------------------- */
+
 const proFeatures = [
-  "Weekly drafts, every Sunday",
-  "Unlimited on-demand generations",
-  "Publish to Beehiiv, ConvertKit or Ghost",
-  "Members can opt out anytime",
-  "Unlimited watched channels",
-  "Priority support",
+  "A new draft every Sunday morning",
+  "Generate any time — for any week, on demand",
+  "Publish straight to Beehiiv, ConvertKit, or Ghost",
+  "Connect every Discord you own",
+  "Members opt out with one slash command",
+  "Two-pass writer — finds the story, then writes it",
 ];
 
 const freeFeatures = [
-  "1 free generation per server, ever",
-  "Markdown editor + preview",
-  "Members can opt out anytime",
-  "Drafts saved to your dashboard",
+  "One full draft, on us, no card required",
+  "Same editor, same markdown, same preview",
+  "Members opt out the same way",
+  "Keep the draft forever — yours either way",
 ];
-
-const faqs = [
-  {
-    q: "What if I already have a newsletter but never send it?",
-    a: "That's exactly who Distill is for. You already have the subscribers and the community. You just need someone to do the first 90% of the writing. That's us.",
-  },
-  {
-    q: "Will it sound like me or like a robot?",
-    a: "The draft captures what happened in your community — the stories, the wins, the debates. You spend 10 minutes making it sound like you. Most creators publish with light edits.",
-  },
-  {
-    q: "What platforms does it publish to?",
-    a: "Beehiiv, ConvertKit, and Ghost. Substack doesn't have a public API, so we can't support it yet.",
-  },
-  {
-    q: "What about member privacy?",
-    a: "Any member can run /distill optout and their messages are permanently excluded. We never store raw messages after the draft is generated. Everything is encrypted.",
-  },
-  {
-    q: "Is the free generation really one per server, ever?",
-    a: "Yes. We key it on the Discord guild ID, so making a new account or re-adding the bot doesn't reset it. We do this so you get a real taste of the product without the freebie being gameable.",
-  },
-];
-
-function Tick() {
-  return (
-    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-positive/15">
-      <Check className="size-3 text-positive" strokeWidth={2.5} />
-    </span>
-  );
-}
-
-function FizzyBlob({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "pointer-events-none absolute rounded-[54%_46%_61%_39%/_57%_49%_51%_43%] blur-3xl",
-        className,
-      )}
-    />
-  );
-}
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-canvas text-ink">
-      {/* Decorative background blobs */}
-      <FizzyBlob className="-top-32 -left-32 h-[40rem] w-[40rem] bg-accent-7/20" />
-      <FizzyBlob className="top-1/3 -right-40 h-[36rem] w-[36rem] bg-accent-5/15" />
-      <FizzyBlob className="bottom-0 left-1/4 h-[30rem] w-[30rem] bg-accent-2/15" />
+    <div className="min-h-screen bg-canvas text-ink">
+      <Nav />
+      <main>
+        <Hero />
+        <Pain />
+        <HowItWorks />
+        <Features />
+        <WhyNotDIY />
+        <Pricing />
+        <FAQ />
+        <FinalCTA />
+      </main>
+      <Footer />
+    </div>
+  );
+}
 
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-ink-lighter/60 bg-canvas/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <BrandMark className="h-6 w-auto" />
-            distill
-          </Link>
-          <div className="hidden items-center gap-6 sm:flex">
-            {["How it works", "Pricing", "FAQ"].map((label) => (
-              <a
-                key={label}
-                href={`#${label.toLowerCase().replace(/ /g, "-")}`}
-                className="text-sm text-ink-dark hover:text-ink"
-              >
-                {label}
-              </a>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <form action={signInWithDiscord} className="hidden sm:block">
-              <Button variant="ghost" size="sm">Sign in</Button>
-            </form>
-            <form action={signInWithDiscord}>
-              <Button variant="primary" size="sm" className="rounded-pill">
-                Try free
-                <ArrowRight className="ml-1 size-3" />
-              </Button>
-            </form>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero */}
-      <section className="relative pt-24 pb-12 sm:pt-32">
-        <div className="mx-auto max-w-3xl px-6 text-center">
-          <span className="mb-6 inline-flex items-center gap-2 rounded-pill border border-ink-lighter bg-canvas/60 px-3 py-1 text-xs text-ink-dark backdrop-blur">
-            <span className="inline-block size-1.5 rounded-full bg-positive" />
-            Free generation per server — no card required
-          </span>
-          <h1 className="mb-6 text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
-            Your Discord wrote your newsletter.{" "}
-            <span className="bg-gradient-to-br from-brand to-brand-discord bg-clip-text text-transparent">
-              Nobody outside sees it.
-            </span>
-          </h1>
-          <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed text-ink-dark sm:text-lg">
-            Distill turns your community&apos;s best moments into a newsletter
-            draft you can publish in 10 minutes. Your members already did the
-            hard part.
-          </p>
-          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <form action={signInWithDiscord}>
-              <Button variant="primary" size="lg" className="rounded-pill px-7">
-                Generate your first draft free
-                <ArrowRight className="ml-1 size-4" />
-              </Button>
-            </form>
+/* ---- Nav ---- */
+function Nav() {
+  return (
+    <nav className="sticky top-0 z-50 border-b border-ink-lighter/60 bg-canvas/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-6">
+        <Link href="/" className="flex items-center gap-2 text-base font-semibold tracking-tight">
+          <BrandMark className="h-5 w-auto" />
+          distill
+        </Link>
+        <div className="hidden items-center gap-7 sm:flex">
+          {[
+            { href: "#how", label: "How it works" },
+            { href: "#pricing", label: "Pricing" },
+            { href: "#faq", label: "FAQ" },
+          ].map((l) => (
             <a
-              href="#how-it-works"
-              className="inline-flex items-center gap-2 rounded-pill border border-ink-lighter bg-canvas px-7 py-3 text-sm font-medium text-ink hover:bg-ink-lightest transition-colors"
+              key={l.href}
+              href={l.href}
+              className="text-sm font-medium text-ink-dark hover:text-ink"
             >
-              See how it works
+              {l.label}
             </a>
-          </div>
-          <p className="mt-6 text-xs text-ink-medium">
-            1 free generation per Discord server, forever. Subscribe to publish.
-          </p>
+          ))}
         </div>
-      </section>
-
-      {/* Preview card */}
-      <section className="relative pb-20">
-        <div className="mx-auto max-w-3xl px-6">
-          <p className="mb-4 text-center text-sm text-ink-medium">
-            What lands in your dashboard every Sunday
-          </p>
-          <div className="overflow-hidden rounded-xl border border-ink-lighter bg-canvas shadow-card">
-            <div className="flex items-center gap-1.5 border-b border-ink-lighter px-5 py-3">
-              <span className="size-2.5 rounded-full bg-ink-light" />
-              <span className="size-2.5 rounded-full bg-ink-light" />
-              <span className="size-2.5 rounded-full bg-ink-light" />
-              <span className="ml-4 font-mono text-xs text-ink-medium">
-                Weekly Draft — Apr 14
-              </span>
-            </div>
-            <div className="space-y-5 p-6 sm:p-8">
-              <p className="text-[15px] leading-relaxed">
-                Big week. Someone finally shipped the CLI tool they&apos;ve been
-                building for six months, the auth debate in #backend went three
-                days straight, and a quiet member&apos;s side project hit the
-                front page of Hacker News.
-              </p>
-              <div className="border-l-2 border-brand pl-5 py-1">
-                <p className="text-sm font-semibold">
-                  ## The tool that broke the star counter
-                </p>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-dark">
-                  One link in #show-work. Within an hour: 40 replies, 200 GitHub
-                  stars, and three members asking to contribute.
-                </p>
-              </div>
-              <div className="border-l-2 border-ink-light pl-5 py-1">
-                <p className="text-sm font-semibold">
-                  ## The great monorepo debate
-                </p>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-dark">
-                  It started with a simple question. Two hours and 80 messages
-                  later, someone posted a diagram that actually changed minds.
-                </p>
-              </div>
-              <p className="text-sm italic text-ink-medium">
-                *Next week: community hackathon kicks off Friday.*
-              </p>
-            </div>
-            <div className="flex items-center gap-6 border-t border-ink-lighter px-6 py-3 text-xs text-ink-medium sm:px-8">
-              <span>
-                <span className="font-semibold tabular-nums text-ink">1,247</span>{" "}
-                messages read
-              </span>
-              <span>
-                <span className="font-semibold tabular-nums text-ink">6</span>{" "}
-                stories found
-              </span>
-              <span className="hidden sm:inline">
-                <span className="font-semibold tabular-nums text-ink">~10 min</span>{" "}
-                to edit & publish
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how-it-works" className="relative py-20">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="mb-14 text-center">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              You&apos;ve already done the hard part.
-            </h2>
-            <p className="mx-auto mt-4 max-w-lg text-sm text-ink-dark sm:text-base">
-              Your community creates the content. Distill writes it up. You make
-              it yours and hit publish.
-            </p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {[
-              {
-                icon: MessageSquare,
-                n: "1",
-                title: "Point it at your server",
-                desc: "Add the Distill bot and choose channels to watch. Two minutes.",
-                // Step 1 is the Discord-connection step — wear the Discord-blue
-                // accent so the colour anchors the action to what's happening.
-                accent: "bg-brand-discord",
-              },
-              {
-                icon: Zap,
-                n: "2",
-                title: "A draft appears every Sunday",
-                desc: "Distill reads the week's conversations, finds the best moments, and writes them up.",
-                // Step 2 is "Distill does the work" — primary brand purple.
-                accent: "bg-brand",
-              },
-              {
-                icon: Send,
-                n: "3",
-                title: "Make it yours and publish",
-                desc: "Edit in markdown. Add your voice. Push to your newsletter platform.",
-                // Step 3 is "ship it" — the warm accent (orange) signals action +
-                // closes the colour loop (cool → cool → warm).
-                accent: "bg-brand-warm",
-              },
-            ].map((step) => (
-              <div
-                key={step.n}
-                className="rounded-xl border border-ink-lighter bg-canvas p-6 shadow-card"
-              >
-                <span
-                  className={cn(
-                    "mb-5 inline-flex size-8 items-center justify-center rounded-pill text-xs font-bold text-ink-inverted",
-                    step.accent,
-                  )}
-                >
-                  {step.n}
-                </span>
-                <h3 className="mb-2 text-base font-semibold">{step.title}</h3>
-                <p className="text-sm leading-relaxed text-ink-dark">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="relative py-20">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="mb-14 text-center">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Everything between Discord and &quot;send.&quot;
-            </h2>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { icon: Zap, title: "Finds stories that matter", desc: "Not a summary. Wins, debates, launches — moments readers actually care about." },
-              { icon: Plug, title: "Publishes where you already are", desc: "One click to Beehiiv, ConvertKit, or Ghost. No copy-pasting between tabs." },
-              { icon: Shield, title: "Respects your members", desc: "Anyone can /distill optout. Their messages are never read or included." },
-              { icon: Target, title: "Only watches what you tell it to", desc: "Pick the channels that matter. Announcements and support stay out." },
-              { icon: PenLine, title: "Always sounds like you", desc: "The draft is markdown you can edit. Cut what doesn't fit, add your take." },
-              { icon: Clock, title: "Weekly, without asking", desc: "Set it once. A new draft lands every Sunday. You don't need to remember." },
-            ].map((f) => (
-              <div
-                key={f.title}
-                className="rounded-xl border border-ink-lighter bg-canvas p-6 shadow-card transition-colors hover:bg-ink-lightest/40"
-              >
-                <div className="mb-4 flex size-9 items-center justify-center rounded-lg bg-brand-soft">
-                  <f.icon className="size-4 text-brand" strokeWidth={1.6} />
-                </div>
-                <h3 className="mb-1.5 text-sm font-semibold">{f.title}</h3>
-                <p className="text-sm leading-relaxed text-ink-dark">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="relative py-20">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="mb-14 text-center">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Try it free. Pay when it&apos;s saving you time.
-            </h2>
-            <p className="mt-4 text-sm text-ink-dark sm:text-base">
-              Cancel anytime.
-            </p>
-          </div>
-
-          <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-2">
-            {/* Free */}
-            <div className="flex flex-col rounded-xl border border-ink-lighter bg-canvas p-7 shadow-card">
-              <h3 className="mb-1 text-lg font-bold">Free</h3>
-              <p className="mb-6 text-sm text-ink-dark">
-                Try Distill on your own Discord. No card needed.
-              </p>
-              <div className="mb-6 flex items-baseline gap-1">
-                <span className="text-4xl font-bold tabular-nums">$0</span>
-                <span className="text-sm text-ink-medium">/forever</span>
-              </div>
-              <ul className="mb-8 flex-1 space-y-3">
-                {freeFeatures.map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-ink-dark">
-                    <Tick />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <form action={signInWithDiscord} className="w-full">
-                <Button variant="outline" className="w-full">Start free</Button>
-              </form>
-            </div>
-
-            {/* Pro */}
-            <div className="relative flex flex-col rounded-xl border-2 border-brand bg-canvas p-7 shadow-card">
-              <div className="absolute -top-3 left-7">
-                <span className="rounded-pill bg-brand px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
-                  Recommended
-                </span>
-              </div>
-              <h3 className="mb-1 text-lg font-bold">Pro</h3>
-              <p className="mb-6 text-sm text-ink-dark">
-                Weekly drafts on autopilot. Publish to your newsletter platform.
-              </p>
-              <div className="mb-6 flex items-baseline gap-1">
-                <span className="text-4xl font-bold tabular-nums">$49</span>
-                <span className="text-sm text-ink-medium">/mo</span>
-              </div>
-              <ul className="mb-8 flex-1 space-y-3">
-                {proFeatures.map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-ink-dark">
-                    <Tick />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <form action={signInWithDiscord} className="w-full">
-                <Button variant="primary" className="w-full rounded-pill">
-                  Get started
-                  <ArrowRight className="ml-1 size-3.5" />
-                </Button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" className="relative py-20">
-        <div className="mx-auto max-w-2xl px-6">
-          <div className="mb-14 text-center">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Questions</h2>
-          </div>
-          <div className="space-y-3">
-            {faqs.map((faq) => (
-              <details
-                key={faq.q}
-                className="group rounded-xl border border-ink-lighter bg-canvas shadow-card"
-              >
-                <summary className="flex cursor-pointer select-none list-none items-center justify-between px-5 py-4 text-sm font-medium">
-                  {faq.q}
-                  <span className="ml-4 shrink-0 text-lg leading-none text-ink-medium transition-transform duration-200 group-open:rotate-45">
-                    +
-                  </span>
-                </summary>
-                <div className="px-5 pb-4 text-sm leading-relaxed text-ink-dark">
-                  {faq.a}
-                </div>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="relative py-20">
-        <div className="mx-auto max-w-2xl px-6 text-center">
-          <h2 className="mb-4 text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
-            You built a community people love.
-            <br />
-            <span className="text-ink-medium">Let the rest of the world see it.</span>
-          </h2>
-          <p className="mb-8 text-sm text-ink-dark sm:text-base">
-            Generate your first draft free. Your members already did the work.
-          </p>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <form action={signInWithDiscord} className="hidden sm:block">
+            <Button variant="ghost" size="sm">
+              Sign in
+            </Button>
+          </form>
           <form action={signInWithDiscord}>
-            <Button variant="primary" size="lg" className="rounded-pill px-7">
-              Try free with Discord
-              <ArrowRight className="ml-1 size-4" />
+            <Button variant="primary" size="sm">
+              Try free
             </Button>
           </form>
         </div>
-      </section>
+      </div>
+    </nav>
+  );
+}
 
-      <footer className="relative border-t border-ink-lighter">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
-          <span className="flex items-center gap-2 text-sm font-bold tracking-tight">
-            <BrandMark className="h-5 w-auto" />
-            distill
-          </span>
-          <div className="flex items-center gap-6 text-xs text-ink-medium">
-            <span>Beehiiv</span>
-            <span>ConvertKit</span>
-            <span>Ghost</span>
+/* ---- Hero ---- */
+function Hero() {
+  return (
+    <section className="px-4 pt-16 pb-16 sm:px-6 md:pt-24 md:pb-24">
+      <div className="mx-auto w-full max-w-[1100px]">
+        <SectionLabel>{"// for community owners who haven't sent the email"}</SectionLabel>
+
+        <div className="mt-6 grid items-start gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
+          {/* Left — the pitch */}
+          <div>
+            <h1 className="text-[clamp(40px,5.6vw,68px)] font-extrabold leading-[1.04] tracking-tight">
+              Your list is waiting.
+              <br />
+              <span className="text-ink-dark">Your community already wrote the email.</span>
+            </h1>
+
+            <p className="mt-7 max-w-[540px] text-[17px] leading-relaxed text-ink-dark sm:text-[19px]">
+              You haven&apos;t emailed your list in weeks. Not because nothing&apos;s happening
+              — your Discord is on fire. Because you can&apos;t bring yourself to sit down
+              and write it up. Distill writes it up. You spend ten minutes making it
+              yours, and ship.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <form action={signInWithDiscord}>
+                <Button variant="primary" size="lg" className="h-[52px] px-7 text-base">
+                  Get your first draft free
+                  <ArrowRight className="ml-1.5 size-4" />
+                </Button>
+              </form>
+              <a
+                href="#how"
+                className="inline-flex h-[52px] items-center justify-center rounded-pill border border-ink-lighter bg-canvas px-6 text-sm font-medium text-ink hover:bg-ink-lightest"
+              >
+                See an example draft
+              </a>
+            </div>
+
+            <p className="mt-5 max-w-[460px] text-[13px] text-ink-medium">
+              One full draft per Discord, no card. If it&apos;s any good, the rest is $49/mo.
+              If it isn&apos;t, you keep the draft.
+            </p>
           </div>
-          <span className="text-xs text-ink-medium">© 2026 SisleLabs</span>
+
+          {/* Right — the actual artifact, not a mockup */}
+          <DraftArtifact />
         </div>
-      </footer>
+      </div>
+    </section>
+  );
+}
+
+/* ---- Draft artifact: real markdown, paste-able ---- */
+function DraftArtifact() {
+  return (
+    <div className="relative">
+      <div className="overflow-hidden rounded-xl border border-ink-lighter bg-canvas shadow-card">
+        {/* Title bar */}
+        <div className="flex items-center gap-2 border-b border-ink-lighter px-4 py-2.5 bg-ink-lightest/60">
+          <span className="size-2.5 rounded-full bg-ink-light" />
+          <span className="size-2.5 rounded-full bg-ink-light" />
+          <span className="size-2.5 rounded-full bg-ink-light" />
+          <span className="ml-2 font-mono text-[11px] text-ink-medium">
+            week-of-may-12.md
+          </span>
+        </div>
+
+        {/* The draft itself */}
+        <div className="space-y-4 px-5 py-6 font-mono text-[12.5px] leading-[1.75] text-ink">
+          <p className="text-ink-dark">
+            <span className="text-brand">#</span> Week of May 12
+          </p>
+
+          <p>
+            Quiet week on the surface, loud one underneath. Six people argued about
+            Stripe webhook reliability for three days, someone shipped a CLI tool
+            that picked up 200 stars overnight, and a regular posted the kind of
+            late-night message you screenshot and keep.
+          </p>
+
+          <p className="text-ink-dark">
+            <span className="text-brand">##</span> The Stripe webhook thing
+          </p>
+
+          <p className="text-ink-dark">
+            It started with one question in #backend. By the third day, the thread
+            had a 90-line code sample and a small consensus: idempotency keys per
+            event, not per request. The folks who disagreed had good reasons.
+            Worth reading the whole thing if you ever take money.
+          </p>
+
+          <p className="text-ink-dark">
+            <span className="text-brand">##</span> 200 stars in 11 hours
+          </p>
+
+          <p className="text-ink-dark">
+            One link in #show-work. By morning a member&apos;s side project was at
+            the top of Hacker News and they were getting their first contributor
+            PRs. We&apos;ve linked the repo below.
+          </p>
+
+          <p className="italic text-ink-medium">
+            <span className="not-italic">*</span>What to watch next week: a
+            handful of people testing a Postgres extension someone in #db wrote
+            on Sunday.<span className="not-italic">*</span>
+          </p>
+        </div>
+
+        {/* Stats row */}
+        <div className="flex items-center gap-5 border-t border-ink-lighter px-5 py-3 text-[11px] text-ink-medium">
+          <span>
+            <span className="font-semibold tabular-nums text-ink">1,243</span> messages read
+          </span>
+          <span>
+            <span className="font-semibold tabular-nums text-ink">6</span> stories found
+          </span>
+          <span className="hidden sm:inline">
+            <span className="font-semibold tabular-nums text-ink">~10 min</span> to edit
+          </span>
+        </div>
+      </div>
+
+      <p className="mt-3 text-center font-mono text-[11px] text-ink-medium">
+        what arrives in your dashboard every Sunday morning
+      </p>
     </div>
+  );
+}
+
+/* ---- Pain section ---- */
+function Pain() {
+  const internalMonologue = [
+    "I should send the email this week.",
+    "Honestly I should have sent it three weeks ago.",
+    "What do I even say. Nothing happened. Wait, something did, but I can't remember what.",
+    "I'll scroll the Discord later and write something good.",
+    "It's 11pm Sunday. I'll send it next week.",
+  ];
+
+  return (
+    <section className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+      <div className="mx-auto max-w-[920px]">
+        <SectionLabel>{"// the actual problem"}</SectionLabel>
+
+        <h2 className="mt-6 text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+          You didn&apos;t run out of subscribers.
+          <br />
+          You ran out of <span className="underline decoration-brand decoration-[3px] underline-offset-[6px]">Sundays.</span>
+        </h2>
+
+        <p className="mt-7 max-w-[640px] text-[17px] leading-relaxed text-ink-dark sm:text-[19px]">
+          The community is the easy part. The community is doing fine. You opened the
+          editor again last weekend. Here&apos;s how that went:
+        </p>
+
+        <div className="mt-10 space-y-3 border-l-2 border-brand pl-6 sm:pl-8">
+          {internalMonologue.map((line, i) => (
+            <p
+              key={i}
+              className={cn(
+                "text-[15px] leading-relaxed sm:text-[17px]",
+                i === internalMonologue.length - 1 ? "text-ink" : "text-ink-dark",
+              )}
+            >
+              {line}
+            </p>
+          ))}
+        </div>
+
+        <div className="mt-12 grid gap-6 border-t border-ink-lighter pt-10 sm:grid-cols-[auto_1fr] sm:gap-10">
+          <p className="font-mono text-[clamp(28px,4vw,44px)] font-bold leading-none">
+            <span className="text-brand-hot">11</span>
+            <span className="text-ink-medium"> weeks</span>
+          </p>
+          <p className="text-[15px] leading-relaxed text-ink-dark sm:text-[17px]">
+            since your last email. Open rates are about to fall off a cliff —
+            that&apos;s the part of the inbox where Gmail starts deciding you might be
+            spam. The longer you wait, the more it costs to come back.
+          </p>
+        </div>
+
+        <p className="mt-10 max-w-[640px] text-[17px] leading-relaxed text-ink sm:text-[19px]">
+          You don&apos;t need to write a better newsletter. You need a newsletter to
+          already be written when you sit down.{" "}
+          <span className="font-semibold">That&apos;s the whole product.</span>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ---- How it works ---- */
+function HowItWorks() {
+  const steps = [
+    {
+      n: "01",
+      title: "Add the bot to your Discord",
+      desc: "Pick the channels worth reading. Two minutes. The bot can only see what you point it at — announcements and support stay out.",
+      ribbon: "bg-brand-discord",
+    },
+    {
+      n: "02",
+      title: "Sunday morning, a draft appears",
+      desc: "Distill reads the week — every message in every channel you picked — and finds the six things worth saying. Then it writes them up in plain prose. No bullet-vomit, no LinkedIn voice, no em-dash maximalism.",
+      ribbon: "bg-brand",
+    },
+    {
+      n: "03",
+      title: "Ten minutes of edits. Hit send.",
+      desc: "Open the editor. Cut what doesn't fit, rewrite the intro in your voice, add a personal note. One click to Beehiiv, ConvertKit, or Ghost. Done before coffee.",
+      ribbon: "bg-brand-warm",
+    },
+  ];
+
+  return (
+    <section id="how" className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+      <div className="mx-auto max-w-[1100px]">
+        <SectionLabel>{"// how it works"}</SectionLabel>
+
+        <h2 className="mt-6 max-w-[820px] text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+          Three steps. None of them is &quot;sit down and write a newsletter.&quot;
+        </h2>
+
+        <div className="mt-14 grid gap-6 md:grid-cols-3">
+          {steps.map((s) => (
+            <div
+              key={s.n}
+              className="relative overflow-hidden rounded-xl border border-ink-lighter bg-canvas p-7 shadow-card"
+            >
+              <span
+                aria-hidden
+                className={cn("absolute inset-x-0 top-0 h-1", s.ribbon)}
+              />
+              <span className="font-mono text-[13px] tracking-wider text-ink-medium">
+                {s.n}
+              </span>
+              <h3 className="mt-3 text-[18px] font-bold leading-tight">{s.title}</h3>
+              <p className="mt-3 text-[14px] leading-relaxed text-ink-dark">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---- Features ---- */
+function Features() {
+  const features = [
+    {
+      title: "Reads your week, not a summary of it",
+      desc: "Two-pass writer. First pass scans every message and finds the six conversations worth telling. Second pass writes them in prose, not bullets. The result reads like something a person wrote — because the people in your Discord did.",
+      stat: "1,243 → 6",
+      statLabel: "messages → stories",
+    },
+    {
+      title: "Members can opt out, instantly",
+      desc: "Anyone in your Discord types /distill optout and their messages are gone — never read, never quoted, never stored. We anonymize everyone by default. Nobody gets named in the email unless you put their name in yourself.",
+      stat: "/distill optout",
+      statLabel: "one slash command",
+    },
+    {
+      title: "Markdown in, markdown out",
+      desc: "The draft is a text file. Edit it like one. We don't lock you into a WYSIWYG that fights you. Cut a section, rewrite the intro, paste it anywhere. The dashboard has a live preview, but you don't have to use it.",
+      stat: ".md",
+      statLabel: "no proprietary format",
+    },
+    {
+      title: "Publishes where you already are",
+      desc: "Beehiiv, ConvertKit, Ghost. One API key per platform, set it once. The publish button does the rest. Substack doesn't have a public API — when they ship one, we'll be there.",
+      stat: "3 platforms",
+      statLabel: "1 click",
+    },
+  ];
+
+  return (
+    <section className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+      <div className="mx-auto max-w-[1100px]">
+        <SectionLabel>{"// what you actually get"}</SectionLabel>
+
+        <h2 className="mt-6 max-w-[760px] text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+          A first draft so good you only have to be the editor.
+        </h2>
+
+        <div className="mt-14 grid gap-5 md:grid-cols-2">
+          {features.map((f) => (
+            <div
+              key={f.title}
+              className="flex flex-col gap-4 rounded-xl border border-ink-lighter bg-canvas p-7 shadow-card"
+            >
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="font-mono text-[18px] font-bold tabular-nums text-brand">
+                  {f.stat}
+                </span>
+                <span className="font-mono text-[11px] tracking-wider text-ink-medium">
+                  {f.statLabel}
+                </span>
+              </div>
+              <h3 className="text-[18px] font-bold leading-tight">{f.title}</h3>
+              <p className="text-[14px] leading-relaxed text-ink-dark">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---- Why not DIY ---- */
+function WhyNotDIY() {
+  return (
+    <section className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+      <div className="mx-auto max-w-[920px]">
+        <SectionLabel>{"// the obvious objection"}</SectionLabel>
+
+        <h2 className="mt-6 max-w-[760px] text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+          &quot;I could just write it myself in 30 minutes.&quot;
+        </h2>
+
+        <p className="mt-7 max-w-[640px] text-[17px] leading-relaxed text-ink-dark sm:text-[19px]">
+          You could. You haven&apos;t. That&apos;s the disconnect.
+        </p>
+
+        <div className="mt-10 grid gap-8 sm:grid-cols-2 sm:gap-10">
+          <div className="border-t border-ink-lighter pt-6">
+            <p className="font-mono text-[12px] uppercase tracking-wider text-ink-medium">
+              The fantasy version
+            </p>
+            <p className="mt-3 text-[15px] leading-relaxed text-ink-dark">
+              Sunday morning, coffee, you scroll the week&apos;s Discord, get inspired,
+              write a 600-word email in 30 minutes, hit send by 11. Inbox happy,
+              list growing, churn falling.
+            </p>
+          </div>
+          <div className="border-t border-brand pt-6">
+            <p className="font-mono text-[12px] uppercase tracking-wider text-brand">
+              What actually happens
+            </p>
+            <p className="mt-3 text-[15px] leading-relaxed text-ink">
+              You open the editor, stare at the cursor, think &quot;nothing
+              interesting happened&quot;, scroll Discord for 20 minutes, realize a lot
+              happened but you can&apos;t structure it, write half a paragraph, hate
+              it, close the tab. Next Sunday: same.
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-12 max-w-[640px] text-[17px] leading-relaxed text-ink sm:text-[19px]">
+          The bottleneck isn&apos;t the writing. It&apos;s the empty page. Distill removes
+          the empty page. Once you&apos;re editing instead of writing, you finish.{" "}
+          <span className="font-semibold">Every time. That&apos;s the whole trick.</span>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ---- Pricing ---- */
+function Pricing() {
+  return (
+    <section id="pricing" className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+      <div className="mx-auto max-w-[1100px]">
+        <SectionLabel>{"// pricing"}</SectionLabel>
+
+        <h2 className="mt-6 max-w-[760px] text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+          One Sunday saved pays for the year.
+        </h2>
+        <p className="mt-5 max-w-[600px] text-[17px] leading-relaxed text-ink-dark">
+          You can cancel any time. We&apos;ll still keep your drafts if you do.
+        </p>
+
+        <div className="mt-12 grid gap-5 md:grid-cols-2">
+          {/* Free */}
+          <PricingCard
+            name="Free"
+            blurb="One full draft on your real Discord. If we get the voice right, you&apos;ll know on draft one."
+            price="$0"
+            cadence="forever"
+            features={freeFeatures}
+            cta={
+              <form action={signInWithDiscord}>
+                <Button variant="outline" className="w-full">
+                  Start free
+                </Button>
+              </form>
+            }
+          />
+          {/* Pro */}
+          <PricingCard
+            name="Pro"
+            blurb="A draft every Sunday, plus on-demand any other day. Publish straight to your platform."
+            price="$49"
+            cadence="/month"
+            badge="Recommended"
+            features={proFeatures}
+            cta={
+              <form action={signInWithDiscord}>
+                <Button variant="primary" className="w-full">
+                  Subscribe — $49/mo
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Button>
+              </form>
+            }
+          />
+        </div>
+
+        <p className="mt-8 max-w-[640px] text-[13px] text-ink-medium">
+          Math: at $49/mo, Distill costs $588/year. A community owner&apos;s hour
+          costs more than that. We save you 30+ hours of writing block per
+          year. The annoying part is that this is the truth.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function PricingCard({
+  name,
+  blurb,
+  price,
+  cadence,
+  features,
+  cta,
+  badge,
+}: {
+  name: string;
+  blurb: string;
+  price: string;
+  cadence: string;
+  features: string[];
+  cta: React.ReactNode;
+  badge?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative flex flex-col rounded-xl bg-canvas p-8 shadow-card",
+        badge ? "border-2 border-brand" : "border border-ink-lighter",
+      )}
+    >
+      {badge && (
+        <span className="absolute -top-3 left-8 rounded-pill bg-brand px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
+          {badge}
+        </span>
+      )}
+      <h3 className="text-[20px] font-bold">{name}</h3>
+      <p className="mt-2 text-[14px] text-ink-dark">{blurb}</p>
+      <div className="mt-6 flex items-baseline gap-1">
+        <span className="text-[44px] font-extrabold tabular-nums tracking-tight">{price}</span>
+        <span className="text-[14px] text-ink-medium">{cadence}</span>
+      </div>
+      <ul className="mt-6 flex-1 space-y-3">
+        {features.map((f) => (
+          <li key={f} className="flex items-start gap-2.5 text-[14px] text-ink-dark">
+            <Check className="mt-0.5 size-4 shrink-0 text-positive" strokeWidth={2.5} />
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-8">{cta}</div>
+    </div>
+  );
+}
+
+/* ---- Final CTA ---- */
+function FinalCTA() {
+  return (
+    <section className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+      <div className="mx-auto max-w-[820px]">
+        <h2 className="text-[clamp(28px,4.6vw,52px)] font-bold leading-[1.05] tracking-tight">
+          Your subscribers are still there.
+          <br />
+          <span className="text-ink-dark">They&apos;ve been there the whole time.</span>
+        </h2>
+        <p className="mt-7 max-w-[600px] text-[17px] leading-relaxed text-ink-dark sm:text-[19px]">
+          Try one draft. If we don&apos;t nail your community&apos;s voice on the first
+          try, you walk away with a free file and nothing else. If we do — well,
+          you already know what Sunday morning is going to look like.
+        </p>
+        <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+          <form action={signInWithDiscord}>
+            <Button variant="primary" size="lg" className="h-[52px] px-7 text-base">
+              Generate your first draft
+              <ArrowRight className="ml-1.5 size-4" />
+            </Button>
+          </form>
+          <a
+            href="#pricing"
+            className="inline-flex h-[52px] items-center justify-center rounded-pill border border-ink-lighter bg-canvas px-6 text-sm font-medium text-ink hover:bg-ink-lightest"
+          >
+            Compare plans
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---- Footer ---- */
+function Footer() {
+  return (
+    <footer className="border-t border-ink-lighter/60 px-4 py-10 sm:px-6">
+      <div className="mx-auto flex max-w-[1100px] flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <span className="flex items-center gap-2 text-sm font-bold tracking-tight">
+          <BrandMark className="h-5 w-auto" />
+          distill
+        </span>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-ink-medium">
+          <span>Beehiiv</span>
+          <span>ConvertKit</span>
+          <span>Ghost</span>
+          <span className="text-ink-light">·</span>
+          <a href="#pricing" className="hover:text-ink">Pricing</a>
+          <a href="#faq" className="hover:text-ink">FAQ</a>
+        </div>
+        <span className="text-[13px] text-ink-medium">
+          Built by SisleLabs in Sofia · © 2026
+        </span>
+      </div>
+    </footer>
+  );
+}
+
+/* ---- Helpers ---- */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="font-mono text-[13px] tracking-wider text-brand sm:text-[14px]">
+      {children}
+    </p>
   );
 }
