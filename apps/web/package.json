@@ -12,6 +12,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "packageManager": "pnpm@9.15.0",
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.69",
     "@ai-sdk/google": "^3.0.64",
