@@ -13,7 +13,24 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Save, Send, Eye, Pencil, ExternalLink, ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
+import { ArrowLeft, Save, Send, Eye, Pencil, ExternalLink, ChevronDown, ChevronRight, MessageSquare, Wand2, Scissors, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+
+type RegenerateDirective = "tighter" | "funnier" | "more_detail" | "rewrite_from_messages";
+
+const DIRECTIVE_LABELS: Record<RegenerateDirective, { label: string; hint: string }> = {
+  tighter: { label: "Make it tighter", hint: "~30% shorter, same content" },
+  funnier: { label: "Add a touch of humor", hint: "One dry, observational line" },
+  more_detail: { label: "More detail", hint: "Pull more from the source thread" },
+  rewrite_from_messages: { label: "Rewrite from source", hint: "Start over from the Discord thread" },
+};
 
 interface SourceMessage {
   id: string;
@@ -57,6 +74,53 @@ function relTime(iso: string): string {
   return `${d}d ago`;
 }
 
+// findSectionRange locates the bounds of a section identified by its
+// story marker. Returns null if missing. The end of a section is the
+// next marker, the closing italic line, or end-of-string.
+function findSectionRange(
+  markdown: string,
+  storyId: string,
+): { start: number; end: number } | null {
+  const escapedId = storyId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const markerRe = new RegExp(`<!--\\s*story:${escapedId}\\s*-->`);
+  const m = markerRe.exec(markdown);
+  if (!m) return null;
+  const start = m.index;
+  const tail = markdown.slice(start + m[0].length);
+  const nextMarker = /<!--\s*story:[A-Za-z0-9_-]+\s*-->/.exec(tail);
+  const closingLine = /(?:^|\n)\*What to watch next week:/m.exec(tail);
+  let endOffset = tail.length;
+  if (nextMarker && nextMarker.index < endOffset) endOffset = nextMarker.index;
+  if (closingLine && closingLine.index < endOffset) endOffset = closingLine.index;
+  return { start, end: start + m[0].length + endOffset };
+}
+
+// replaceSection swaps a section body identified by storyId with new
+// markdown. We re-emit the marker so the source-map continues to
+// resolve correctly even if the model accidentally dropped it.
+function replaceSection(
+  markdown: string,
+  storyId: string,
+  newBody: string,
+): string {
+  const range = findSectionRange(markdown, storyId);
+  if (!range) return markdown;
+  const before = markdown.slice(0, range.start);
+  const after = markdown.slice(range.end);
+  const marker = `<!-- story:${storyId} -->`;
+  const trimmedBody = newBody.trim();
+  return `${before}${marker}\n${trimmedBody}\n\n${after.replace(/^\n+/, "\n")}`;
+}
+
+// removeSection strips a section + its marker from the markdown.
+function removeSection(markdown: string, storyId: string): string {
+  const range = findSectionRange(markdown, storyId);
+  if (!range) return markdown;
+  const before = markdown.slice(0, range.start).replace(/\n+$/, "\n\n");
+  const after = markdown.slice(range.end).replace(/^\n+/, "");
+  return `${before}${after}`;
+}
+
 const platforms = [
   { id: "beehiiv", name: "Beehiiv", desc: "Email newsletter platform" },
   { id: "convertkit", name: "ConvertKit", desc: "Creator email marketing" },
@@ -82,6 +146,8 @@ export default function NewsletterEditorPage() {
   const [sources, setSources] = useState<SourceSection[]>([]);
   const [guildId, setGuildId] = useState<string>("");
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/proxy/newsletters/${newsletterId}`)
@@ -115,6 +181,57 @@ export default function NewsletterEditorPage() {
       else next.add(id);
       return next;
     });
+  };
+
+  // Pull the current text of one section out of `content` so the
+  // backend rewrites what the operator actually sees, not what was
+  // persisted at draft-load time. We slice using findSectionRange so
+  // the markers and surrounding whitespace are normalized the same
+  // way the replace path will reinsert them.
+  const sliceSection = (storyId: string): string | null => {
+    const range = findSectionRange(content, storyId);
+    if (!range) return null;
+    return content.slice(range.start, range.end).trim();
+  };
+
+  const handleRegenerate = async (
+    storyId: string,
+    directive: RegenerateDirective,
+  ) => {
+    const currentSection = sliceSection(storyId);
+    if (!currentSection) {
+      setRegenerateError(
+        "Couldn't find that section in the draft anymore — did you edit the marker?",
+      );
+      return;
+    }
+    setRegeneratingId(storyId);
+    setRegenerateError(null);
+    try {
+      const res = await fetch(
+        `/api/proxy/newsletters/${newsletterId}/regenerate-section`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storyId, currentSection, directive }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || typeof data.markdown !== "string") {
+        setRegenerateError(data?.error || "Rewrite failed. Try again.");
+        return;
+      }
+      setContent((prev) => replaceSection(prev, storyId, data.markdown));
+    } catch {
+      setRegenerateError("Couldn't reach the rewrite service. Try again.");
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
+
+  const handleCutSection = (storyId: string) => {
+    setContent((prev) => removeSection(prev, storyId));
+    setSources((prev) => prev.filter((s) => s.storyId !== storyId));
   };
 
   const handleSave = useCallback(async () => {
@@ -344,9 +461,14 @@ export default function NewsletterEditorPage() {
                   <MessageSquare className="h-4 w-4 text-ink-dark" />
                   <h3 className="text-sm font-semibold">Source messages</h3>
                   <span className="text-xs text-ink-dark">
-                    — every section, traced back to the Discord threads it came from.
+                    — every section, traced back to the Discord threads it came from. Use Rewrite to nudge the AI on one section without losing the others.
                   </span>
                 </header>
+                {regenerateError && (
+                  <div className="mb-3 rounded-md border border-negative/30 bg-negative/10 px-3 py-2 text-xs text-negative">
+                    {regenerateError}
+                  </div>
+                )}
                 <ul className="space-y-2">
                   {sources.map((s) => {
                     const open = expandedSources.has(s.storyId);
@@ -355,34 +477,82 @@ export default function NewsletterEditorPage() {
                         key={s.storyId}
                         className="rounded-md border border-ink-lighter bg-ink-lightest/40"
                       >
-                        <button
-                          type="button"
-                          onClick={() => toggleSource(s.storyId)}
-                          className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-ink-lightest"
-                        >
-                          {open ? (
-                            <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-dark" />
-                          ) : (
-                            <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-dark" />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate text-sm font-medium">
-                                {s.title}
-                              </span>
-                              <span className="shrink-0 rounded-pill bg-ink-lighter px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-dark">
-                                {s.type}
-                              </span>
+                        <div className="flex items-start gap-2 px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleSource(s.storyId)}
+                            className="flex min-w-0 flex-1 items-start gap-2 text-left hover:opacity-80"
+                          >
+                            {open ? (
+                              <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-dark" />
+                            ) : (
+                              <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-dark" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate text-sm font-medium">
+                                  {s.title}
+                                </span>
+                                <span className="shrink-0 rounded-pill bg-ink-lighter px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-dark">
+                                  {s.type}
+                                </span>
+                              </div>
+                              <p className="mt-0.5 text-xs text-ink-dark">
+                                {s.whyItMatters}
+                              </p>
                             </div>
-                            <p className="mt-0.5 text-xs text-ink-dark">
-                              {s.whyItMatters}
-                            </p>
-                          </div>
-                          <span className="shrink-0 text-xs text-ink-dark">
-                            {s.messages.length}{" "}
-                            {s.messages.length === 1 ? "message" : "messages"}
-                          </span>
-                        </button>
+                            <span className="shrink-0 text-xs text-ink-dark">
+                              {s.messages.length}{" "}
+                              {s.messages.length === 1 ? "message" : "messages"}
+                            </span>
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                disabled={regeneratingId !== null}
+                                className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-ink-lighter px-2 text-xs text-ink-dark hover:bg-background disabled:opacity-50"
+                                title="Rewrite this section"
+                              >
+                                {regeneratingId === s.storyId ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Wand2 className="h-3 w-3" />
+                                )}
+                                Rewrite
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-64">
+                              <DropdownMenuLabel className="text-[11px] text-ink-dark">
+                                AI rewrite
+                              </DropdownMenuLabel>
+                              {(Object.keys(DIRECTIVE_LABELS) as RegenerateDirective[]).map(
+                                (d) => (
+                                  <DropdownMenuItem
+                                    key={d}
+                                    onClick={() => handleRegenerate(s.storyId, d)}
+                                    className="flex flex-col items-start gap-0.5"
+                                  >
+                                    <span className="text-sm">
+                                      {DIRECTIVE_LABELS[d].label}
+                                    </span>
+                                    <span className="text-[11px] text-ink-dark">
+                                      {DIRECTIVE_LABELS[d].hint}
+                                    </span>
+                                  </DropdownMenuItem>
+                                ),
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleCutSection(s.storyId)}
+                                className="flex items-center gap-2 text-negative"
+                              >
+                                <Scissors className="h-3 w-3" />
+                                Cut this section
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                         {open && (
                           <ul className="space-y-1 border-t border-ink-lighter px-3 py-2">
                             {s.messages.map((m) => {
