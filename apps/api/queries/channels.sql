@@ -24,3 +24,16 @@ SELECT EXISTS(
 SELECT mc.id AS channel_id, s.id AS server_id FROM monitored_channels mc
 JOIN servers s ON mc.server_id = s.id
 WHERE s.discord_guild_id = $1 AND mc.discord_channel_id = $2 AND s.status = 'active';
+
+-- name: UpdateMonitoredChannelWeight :one
+-- Bumps a channel's Pass1 weight (0.5 / 1.0 / 2.0 nominally; any
+-- NUMERIC(3,2) is accepted at the DB level). Returns the row so the
+-- handler can echo the new value back without a follow-up SELECT.
+--
+-- Scoped by server_id + discord_channel_id (rather than the row UUID)
+-- to match the route shape used by DeleteMonitoredChannel — keeps the
+-- URL identifier story consistent.
+UPDATE monitored_channels
+SET weight = $3
+WHERE server_id = $1 AND discord_channel_id = $2
+RETURNING *;

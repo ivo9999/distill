@@ -31,6 +31,7 @@ type MonitoredChannel struct {
 	DiscordChannelID string             `json:"discord_channel_id"`
 	Name             string             `json:"name"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	Weight           pgtype.Numeric     `json:"weight"`
 }
 
 type Newsletter struct {

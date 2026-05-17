@@ -41,13 +41,33 @@ export async function runPipeline(
   // Pass 1: Rank and identify stories
   const pass1 = await runPass1(input.messages, input.communityType);
 
-  // Take top 8 stories by engagement_signal
-  const topStories = pass1.output.stories
-    .sort((a, b) => b.engagement_signal - a.engagement_signal)
+  // Apply per-channel weights deterministically: scale each story's
+  // engagement_signal by the max weight of its source messages. We use
+  // max (not mean) so a single high-signal message can lift a story
+  // even if it references context messages from a noisier channel.
+  // The Pass1 prompt also gets the weights as a hint, but this step
+  // is what actually changes the top-8 selection — we don't trust the
+  // model to apply numeric weights reliably.
+  const messageMap = new Map(input.messages.map((m) => [m.id, m]));
+  const weighted = pass1.output.stories.map((story) => {
+    let maxWeight = 1.0;
+    for (const id of story.key_message_ids) {
+      const m = messageMap.get(id);
+      if (m?.channelWeight && m.channelWeight > maxWeight) {
+        maxWeight = m.channelWeight;
+      }
+    }
+    return {
+      ...story,
+      weighted_signal: story.engagement_signal * maxWeight,
+    };
+  });
+
+  // Top 8 stories by weighted signal (descending)
+  const topStories = weighted
+    .sort((a, b) => b.weighted_signal - a.weighted_signal)
     .slice(0, 8);
 
-  // Re-attach source messages to each story
-  const messageMap = new Map(input.messages.map((m) => [m.id, m]));
   const storiesWithMessages: StoryWithMessages[] = topStories.map((story) => ({
     ...story,
     messages: story.key_message_ids

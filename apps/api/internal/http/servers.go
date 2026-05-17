@@ -288,32 +288,43 @@ func listMessages(s *Server) http.HandlerFunc {
 			return
 		}
 
-		// Build channel name lookup
+		// Build channel name + weight lookup. Weight is exposed per
+		// message so the TS pipeline can scale engagement_signal at
+		// rank time without a second round-trip.
 		channels, _ := s.Queries.ListMonitoredChannels(r.Context(), serverID)
-		channelNames := make(map[string]string)
+		type chInfo struct {
+			name   string
+			weight float64
+		}
+		channelByID := make(map[string]chInfo)
 		for _, ch := range channels {
 			uid := fmt.Sprintf("%x-%x-%x-%x-%x",
 				ch.ID.Bytes[0:4], ch.ID.Bytes[4:6], ch.ID.Bytes[6:8], ch.ID.Bytes[8:10], ch.ID.Bytes[10:16])
-			channelNames[uid] = ch.Name
+			channelByID[uid] = chInfo{name: ch.Name, weight: numericToFloat(ch.Weight, 1.0)}
 		}
 
 		type messageResponse struct {
-			ID            string `json:"id"`
-			AuthorID      string `json:"author_id"`
-			AuthorName    string `json:"author_name"`
-			Content       string `json:"content"`
-			Timestamp     string `json:"timestamp"`
-			ReactionCount int32  `json:"reaction_count"`
-			ReplyCount    int32  `json:"reply_count"`
-			ReplyToID     string `json:"reply_to_id,omitempty"`
-			ThreadID      string `json:"thread_id,omitempty"`
-			ChannelName   string `json:"channel_name"`
+			ID            string  `json:"id"`
+			AuthorID      string  `json:"author_id"`
+			AuthorName    string  `json:"author_name"`
+			Content       string  `json:"content"`
+			Timestamp     string  `json:"timestamp"`
+			ReactionCount int32   `json:"reaction_count"`
+			ReplyCount    int32   `json:"reply_count"`
+			ReplyToID     string  `json:"reply_to_id,omitempty"`
+			ThreadID      string  `json:"thread_id,omitempty"`
+			ChannelName   string  `json:"channel_name"`
+			ChannelWeight float64 `json:"channel_weight"`
 		}
 
 		resp := make([]messageResponse, 0, len(messages))
 		for _, m := range messages {
 			chID := fmt.Sprintf("%x-%x-%x-%x-%x",
 				m.ChannelID.Bytes[0:4], m.ChannelID.Bytes[4:6], m.ChannelID.Bytes[6:8], m.ChannelID.Bytes[8:10], m.ChannelID.Bytes[10:16])
+			info := channelByID[chID]
+			if info.weight == 0 {
+				info.weight = 1.0
+			}
 			mr := messageResponse{
 				ID:            m.DiscordMessageID,
 				AuthorID:      m.DiscordAuthorID,
@@ -322,7 +333,8 @@ func listMessages(s *Server) http.HandlerFunc {
 				Timestamp:     m.SentAt.Time.Format(time.RFC3339),
 				ReactionCount: m.ReactionCount,
 				ReplyCount:    m.ReplyCount,
-				ChannelName:   channelNames[chID],
+				ChannelName:   info.name,
+				ChannelWeight: info.weight,
 			}
 			if m.ReplyToDiscordID.Valid {
 				mr.ReplyToID = m.ReplyToDiscordID.String
@@ -369,8 +381,46 @@ func listChannels(s *Server) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, channels)
+		// Project channels into a stable JSON shape with weight as a
+		// float64 (instead of pgtype.Numeric, which JSON-encodes as an
+		// object the frontend can't easily read). The default weight is
+		// 1.0 — older rows without an explicit Set will surface that.
+		type channelResponse struct {
+			ID               pgtype.UUID `json:"id"`
+			ServerID         pgtype.UUID `json:"server_id"`
+			DiscordChannelID string      `json:"discord_channel_id"`
+			Name             string      `json:"name"`
+			Weight           float64     `json:"weight"`
+			CreatedAt        string      `json:"created_at"`
+		}
+		resp := make([]channelResponse, 0, len(channels))
+		for _, ch := range channels {
+			resp = append(resp, channelResponse{
+				ID:               ch.ID,
+				ServerID:         ch.ServerID,
+				DiscordChannelID: ch.DiscordChannelID,
+				Name:             ch.Name,
+				Weight:           numericToFloat(ch.Weight, 1.0),
+				CreatedAt:        ch.CreatedAt.Time.Format(time.RFC3339),
+			})
+		}
+		writeJSON(w, http.StatusOK, resp)
 	}
+}
+
+// numericToFloat converts a pgtype.Numeric (the sqlc-generated mapping
+// for NUMERIC) to a float64 suitable for JSON. Falls back to def on
+// any decode failure rather than 0 — callers that care about an
+// explicit zero should check Valid themselves.
+func numericToFloat(n pgtype.Numeric, def float64) float64 {
+	if !n.Valid {
+		return def
+	}
+	f, err := n.Float64Value()
+	if err != nil || !f.Valid {
+		return def
+	}
+	return f.Float64
 }
 
 type addChannelRequest struct {
@@ -434,6 +484,87 @@ func addChannel(s *Server) http.HandlerFunc {
 		}
 
 		writeJSON(w, http.StatusCreated, ch)
+	}
+}
+
+type updateChannelRequest struct {
+	// Pointer so the handler can distinguish "field omitted from body"
+	// from "weight explicitly set to 0". We only persist when non-nil.
+	Weight *float64 `json:"weight,omitempty"`
+}
+
+// updateChannel — partial update of a monitored channel. Today it
+// only supports `weight`, but the body is shaped as a partial so
+// future fields (e.g. per-channel community-type override) can be
+// added without breaking the route shape.
+//
+// Clamps the weight to [0.1, 5.0]. The UI only exposes three presets
+// (0.5 / 1.0 / 2.0) but the API is permissive enough that we can
+// experiment with finer-grained values later without a server bump.
+func updateChannel(s *Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.UserIDFromContext(r.Context())
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		var serverID pgtype.UUID
+		if err := serverID.Scan(chi.URLParam(r, "serverID")); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid server ID")
+			return
+		}
+
+		server, err := s.Queries.GetServerByID(r.Context(), serverID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "server not found")
+			return
+		}
+		if server.UserID != userID {
+			writeError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+
+		var req updateChannelRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		if req.Weight == nil {
+			writeError(w, http.StatusBadRequest, "no fields to update")
+			return
+		}
+
+		weight := *req.Weight
+		if weight < 0.1 {
+			weight = 0.1
+		}
+		if weight > 5.0 {
+			weight = 5.0
+		}
+
+		var weightNum pgtype.Numeric
+		if err := weightNum.Scan(fmt.Sprintf("%.2f", weight)); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid weight")
+			return
+		}
+
+		ch, err := s.Queries.UpdateMonitoredChannelWeight(r.Context(), db.UpdateMonitoredChannelWeightParams{
+			ServerID:         serverID,
+			DiscordChannelID: chi.URLParam(r, "channelID"),
+			Weight:           weightNum,
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to update channel")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"id":                 ch.ID,
+			"discord_channel_id": ch.DiscordChannelID,
+			"name":               ch.Name,
+			"weight":             numericToFloat(ch.Weight, 1.0),
+		})
 	}
 }
 

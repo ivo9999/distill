@@ -38,6 +38,8 @@ Your job is to find every conversation from this week that would make good conte
 
 Ignore: greetings, off-topic chatter, single-message announcements with no engagement, support requests with no resolution, anything spam-adjacent, anything from a user in the opt-out list.
 
+Each message may carry a "channelWeight" field. The operator marked some channels as high-signal (weight > 1.0) and others as low-signal (weight < 1.0). Treat high-signal channels as more likely sources of newsletter-worthy stories, and low-signal channels as background noise unless something individually exceptional happens there.
+
 For each story candidate, return:
 {
   "story_id": "short-slug",
@@ -65,6 +67,13 @@ export interface Message {
   replyToId?: string;
   threadId?: string;
   channelName?: string;
+  // Per-channel weight (0.5 / 1.0 / 2.0 nominally). The user marks
+  // some channels as high-signal (#wins, #showcase) and others as
+  // low (#general, #off-topic) in the dashboard. The pipeline applies
+  // this post-Pass1 by scaling engagement_signal; the Pass1 prompt
+  // also surfaces it as a soft hint so the model gets a chance to
+  // prefer stronger channels at selection time too.
+  channelWeight?: number;
 }
 
 export async function runPass1(

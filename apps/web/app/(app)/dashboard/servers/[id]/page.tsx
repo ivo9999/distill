@@ -52,6 +52,36 @@ interface Channel {
   id: string;
   name: string;
   discord_channel_id: string;
+  weight?: number;
+}
+
+// Three weight presets the UI exposes. The API accepts any value in
+// [0.1, 5.0], but presets keep the dashboard a 3-way decision rather
+// than a knob. Choices were tuned to be obviously different at Pass1
+// rank-time without being so extreme that a single "high-signal"
+// channel drowns out everything else.
+const WEIGHT_PRESETS = [
+  { value: "0.5", label: "Low signal", description: "Background noise — only exceptional moments surface" },
+  { value: "1.0", label: "Normal", description: "Default — included on merit" },
+  { value: "2.0", label: "High signal", description: "Stories from here float to the top" },
+] as const;
+
+// Closest-preset lookup: rows from the DB may carry historical values
+// (1.5, 0.75) that don't snap to the three presets. We display them as
+// the nearest preset so the select stays usable; saving snaps to the
+// preset value, which is fine since we don't expose finer control.
+function weightToPreset(w: number | undefined): string {
+  const target = typeof w === "number" && w > 0 ? w : 1.0;
+  let best: string = WEIGHT_PRESETS[1].value;
+  let bestDiff = Math.abs(parseFloat(WEIGHT_PRESETS[1].value) - target);
+  for (const p of WEIGHT_PRESETS) {
+    const diff = Math.abs(parseFloat(p.value) - target);
+    if (diff < bestDiff) {
+      best = p.value;
+      bestDiff = diff;
+    }
+  }
+  return best;
 }
 
 export default function ServerSettingsPage() {
@@ -199,30 +229,73 @@ export default function ServerSettingsPage() {
 
           {/* Monitored Channels */}
           <div className="space-y-2">
-            <Label>Monitored Channels</Label>
+            <div className="flex items-end justify-between">
+              <Label>Monitored Channels</Label>
+              <p className="text-xs text-ink-dark">
+                Mark each channel by signal — the AI weights stories accordingly.
+              </p>
+            </div>
             {channels.length > 0 ? (
               <ul className="space-y-1">
                 {channels.map((channel) => (
                   <li
                     key={channel.id}
-                    className="flex items-center justify-between text-sm text-ink bg-ink-lightest px-3 py-2 rounded-md"
+                    className="flex items-center justify-between gap-3 text-sm text-ink bg-ink-lightest px-3 py-2 rounded-md"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       <span className="text-ink-medium">#</span>
-                      {channel.name}
+                      <span className="truncate">{channel.name}</span>
                     </div>
-                    <button
-                      className="text-xs text-negative hover:text-negative cursor-pointer"
-                      onClick={async () => {
-                        await fetch(
-                          `/api/proxy/servers/${serverId}/channels/${channel.discord_channel_id}`,
-                          { method: "DELETE" }
-                        );
-                        setChannels((prev) => prev.filter((c) => c.id !== channel.id));
-                      }}
-                    >
-                      Remove
-                    </button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Select
+                        value={weightToPreset(channel.weight)}
+                        onValueChange={async (v) => {
+                          if (!v) return;
+                          const w = parseFloat(v);
+                          // Optimistic update so the dropdown doesn't feel
+                          // sluggish; the PATCH below reconciles or fails.
+                          setChannels((prev) =>
+                            prev.map((c) => (c.id === channel.id ? { ...c, weight: w } : c)),
+                          );
+                          await fetch(
+                            `/api/proxy/servers/${serverId}/channels/${channel.discord_channel_id}`,
+                            {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ weight: w }),
+                            },
+                          );
+                        }}
+                      >
+                        <SelectTrigger className="h-7 w-[140px] text-xs">
+                          <SelectValue>
+                            {WEIGHT_PRESETS.find((p) => p.value === weightToPreset(channel.weight))?.label ?? "Normal"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {WEIGHT_PRESETS.map((p) => (
+                            <SelectItem key={p.value} value={p.value}>
+                              <div>
+                                <div className="text-sm">{p.label}</div>
+                                <div className="text-xs text-ink-dark">{p.description}</div>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <button
+                        className="text-xs text-negative hover:text-negative cursor-pointer"
+                        onClick={async () => {
+                          await fetch(
+                            `/api/proxy/servers/${serverId}/channels/${channel.discord_channel_id}`,
+                            { method: "DELETE" }
+                          );
+                          setChannels((prev) => prev.filter((c) => c.id !== channel.id));
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

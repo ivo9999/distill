@@ -15,7 +15,7 @@ const addMonitoredChannel = `-- name: AddMonitoredChannel :one
 INSERT INTO monitored_channels (server_id, discord_channel_id, name)
 VALUES ($1, $2, $3)
 ON CONFLICT (server_id, discord_channel_id) DO UPDATE SET name = EXCLUDED.name
-RETURNING id, server_id, discord_channel_id, name, created_at
+RETURNING id, server_id, discord_channel_id, name, created_at, weight
 `
 
 type AddMonitoredChannelParams struct {
@@ -33,6 +33,7 @@ func (q *Queries) AddMonitoredChannel(ctx context.Context, arg AddMonitoredChann
 		&i.DiscordChannelID,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Weight,
 	)
 	return i, err
 }
@@ -52,7 +53,7 @@ func (q *Queries) DeleteMonitoredChannel(ctx context.Context, arg DeleteMonitore
 }
 
 const getMonitoredChannel = `-- name: GetMonitoredChannel :one
-SELECT id, server_id, discord_channel_id, name, created_at FROM monitored_channels WHERE server_id = $1 AND discord_channel_id = $2
+SELECT id, server_id, discord_channel_id, name, created_at, weight FROM monitored_channels WHERE server_id = $1 AND discord_channel_id = $2
 `
 
 type GetMonitoredChannelParams struct {
@@ -69,6 +70,7 @@ func (q *Queries) GetMonitoredChannel(ctx context.Context, arg GetMonitoredChann
 		&i.DiscordChannelID,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Weight,
 	)
 	return i, err
 }
@@ -117,7 +119,7 @@ func (q *Queries) IsChannelMonitored(ctx context.Context, arg IsChannelMonitored
 }
 
 const listMonitoredChannels = `-- name: ListMonitoredChannels :many
-SELECT id, server_id, discord_channel_id, name, created_at FROM monitored_channels WHERE server_id = $1 ORDER BY name
+SELECT id, server_id, discord_channel_id, name, created_at, weight FROM monitored_channels WHERE server_id = $1 ORDER BY name
 `
 
 func (q *Queries) ListMonitoredChannels(ctx context.Context, serverID pgtype.UUID) ([]MonitoredChannel, error) {
@@ -135,6 +137,7 @@ func (q *Queries) ListMonitoredChannels(ctx context.Context, serverID pgtype.UUI
 			&i.DiscordChannelID,
 			&i.Name,
 			&i.CreatedAt,
+			&i.Weight,
 		); err != nil {
 			return nil, err
 		}
@@ -144,4 +147,38 @@ func (q *Queries) ListMonitoredChannels(ctx context.Context, serverID pgtype.UUI
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateMonitoredChannelWeight = `-- name: UpdateMonitoredChannelWeight :one
+UPDATE monitored_channels
+SET weight = $3
+WHERE server_id = $1 AND discord_channel_id = $2
+RETURNING id, server_id, discord_channel_id, name, created_at, weight
+`
+
+type UpdateMonitoredChannelWeightParams struct {
+	ServerID         pgtype.UUID    `json:"server_id"`
+	DiscordChannelID string         `json:"discord_channel_id"`
+	Weight           pgtype.Numeric `json:"weight"`
+}
+
+// Bumps a channel's Pass1 weight (0.5 / 1.0 / 2.0 nominally; any
+// NUMERIC(3,2) is accepted at the DB level). Returns the row so the
+// handler can echo the new value back without a follow-up SELECT.
+//
+// Scoped by server_id + discord_channel_id (rather than the row UUID)
+// to match the route shape used by DeleteMonitoredChannel — keeps the
+// URL identifier story consistent.
+func (q *Queries) UpdateMonitoredChannelWeight(ctx context.Context, arg UpdateMonitoredChannelWeightParams) (MonitoredChannel, error) {
+	row := q.db.QueryRow(ctx, updateMonitoredChannelWeight, arg.ServerID, arg.DiscordChannelID, arg.Weight)
+	var i MonitoredChannel
+	err := row.Scan(
+		&i.ID,
+		&i.ServerID,
+		&i.DiscordChannelID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Weight,
+	)
+	return i, err
 }

@@ -62,6 +62,7 @@ func NewRouter(s *Server) http.Handler {
 		// Channels
 		r.Get("/api/servers/{serverID}/channels", listChannels(s))
 		r.Post("/api/servers/{serverID}/channels", addChannel(s))
+		r.Patch("/api/servers/{serverID}/channels/{channelID}", updateChannel(s))
 		r.Delete("/api/servers/{serverID}/channels/{channelID}", removeChannel(s))
 
 		// Newsletters

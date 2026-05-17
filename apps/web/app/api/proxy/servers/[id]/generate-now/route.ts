@@ -74,6 +74,7 @@ export async function POST(
     replyToId: m.reply_to_id || undefined,
     threadId: m.thread_id || undefined,
     channelName: m.channel_name,
+    channelWeight: typeof m.channel_weight === "number" ? m.channel_weight : 1.0,
   }));
 
   // 5. Run the AI pipeline.
