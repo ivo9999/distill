@@ -3,12 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Calendar, ArrowRight, Sparkles, Settings as SettingsIcon, FileText, Loader2, AlertCircle } from "lucide-react";
+import { Calendar, ArrowRight, Sparkles, Settings as SettingsIcon, FileText, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import {
+  GenerationError,
+  type GenerationErrorState,
+} from "@/components/generation-error";
 
 function humanCron(cron: string): string {
   const parts = cron.split(" ");
@@ -68,7 +72,9 @@ export default function DashboardPage() {
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
-  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<
+    (GenerationErrorState & { id: string }) | null
+  >(null);
   const [quotas, setQuotas] = useState<Record<string, Quota>>({});
 
   useEffect(() => {
@@ -126,26 +132,50 @@ export default function DashboardPage() {
   const handleGenerate = async (serverId: string) => {
     setGeneratingId(serverId);
     setGenerateError(null);
-    const res = await fetch(`/api/proxy/servers/${serverId}/generate-now`, {
-      method: "POST",
-    });
-    let data: { saved?: boolean; id?: string; error?: string; tier?: string } = {};
+    let data: {
+      saved?: boolean;
+      id?: string;
+      error?: string;
+      tier?: string;
+      category?: GenerationErrorState["category"];
+    } = {};
     try {
-      data = await res.json();
+      const res = await fetch(`/api/proxy/servers/${serverId}/generate-now`, {
+        method: "POST",
+      });
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: "Unexpected response from server", category: "internal" };
+      }
+      if (res.ok && data.saved && data.id) {
+        setGeneratingId(null);
+        setQuotas((prev) => {
+          const q = prev[serverId];
+          if (q)
+            return {
+              ...prev,
+              [serverId]: { ...q, used: q.used + 1, remaining: q.remaining - 1 },
+            };
+          return prev;
+        });
+        router.push(`/dashboard/servers/${serverId}/newsletters/${data.id}`);
+        return;
+      }
     } catch {
-      data = { error: "Unexpected response from server" };
+      data = {
+        error: "Couldn't reach the generation service. Check your connection and try again.",
+        category: "internal",
+      };
     }
     setGeneratingId(null);
-    if (res.ok && data.saved && data.id) {
-      setQuotas((prev) => {
-        const q = prev[serverId];
-        if (q) return { ...prev, [serverId]: { ...q, used: q.used + 1, remaining: q.remaining - 1 } };
-        return prev;
-      });
-      router.push(`/dashboard/servers/${serverId}/newsletters/${data.id}`);
-    } else {
-      setGenerateError(data.error || "Failed to generate. Please try again.");
-    }
+    setGenerateError({
+      id: serverId,
+      message: data.error || "Failed to generate. Please try again.",
+      category: data.category,
+      tier: data.tier,
+      serverId,
+    });
   };
 
   return (
@@ -259,10 +289,15 @@ export default function DashboardPage() {
       </div>
 
       {generateError && (
-        <div className="mt-4 flex items-start gap-2 rounded-card border border-negative/30 bg-negative/10 px-4 py-3 text-sm text-negative">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {generateError}
-        </div>
+        <GenerationError
+          error={generateError}
+          onRetry={
+            generateError.category === "timeout" || generateError.category === "internal"
+              ? () => handleGenerate(generateError.id)
+              : undefined
+          }
+          onDismiss={() => setGenerateError(null)}
+        />
       )}
     </div>
   );

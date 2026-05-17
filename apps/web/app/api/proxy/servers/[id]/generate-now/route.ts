@@ -27,7 +27,10 @@ export async function POST(
       quota.tier === "free"
         ? "You've used your free generation for this server. Subscribe to keep going."
         : `You've used all ${quota.limit} on-demand generations this month (${quota.tier} plan).`;
-    return NextResponse.json({ error: msg, tier: quota.tier }, { status: 402 });
+    return NextResponse.json(
+      { error: msg, tier: quota.tier, category: "quota" },
+      { status: 402 },
+    );
   }
 
   // 2. Get server info
@@ -45,8 +48,16 @@ export async function POST(
   const dbMessages = await messagesRes.json();
 
   if (!Array.isArray(dbMessages) || dbMessages.length === 0) {
+    // Surfaced as a "thin_week" category so the UI shows the friendly
+    // "add more channels" UX rather than a red error banner. Same root
+    // cause as Pass1 returning [] — the channels were silent — same
+    // recovery action.
     return NextResponse.json(
-      { error: "No messages found in your channels from the past week. Try posting some messages first!" },
+      {
+        error:
+          "No messages from your monitored channels this past week. Try adding more channels, or wait for more activity.",
+        category: "thin_week",
+      },
       { status: 400 },
     );
   }
