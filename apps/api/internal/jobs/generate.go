@@ -75,9 +75,28 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 		return nil
 	}
 
+	// Build a channel weight lookup so each message carries its
+	// per-channel weight into the pipeline. Defaulting to 1.0 keeps
+	// historical behavior for unweighted channels and rows.
+	channels, _ := w.Queries.ListMonitoredChannels(ctx, serverID)
+	weightByChannelID := make(map[pgtype.UUID]float64, len(channels))
+	for _, ch := range channels {
+		w := 1.0
+		if ch.Weight.Valid {
+			if f, err := ch.Weight.Float64Value(); err == nil && f.Valid {
+				w = f.Float64
+			}
+		}
+		weightByChannelID[ch.ID] = w
+	}
+
 	// Convert db messages to llmclient messages.
 	llmMsgs := make([]llmclient.Message, 0, len(messages))
 	for _, m := range messages {
+		weight, ok := weightByChannelID[m.ChannelID]
+		if !ok {
+			weight = 1.0
+		}
 		llmMsgs = append(llmMsgs, llmclient.Message{
 			ID:            m.DiscordMessageID,
 			AuthorID:      m.DiscordAuthorID,
@@ -88,6 +107,7 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 			ReplyCount:    int(m.ReplyCount),
 			ReplyToID:     m.ReplyToDiscordID.String,
 			ThreadID:      m.ThreadDiscordID.String,
+			ChannelWeight: weight,
 		})
 	}
 
@@ -96,9 +116,15 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 		communityType = server.CommunityType.String
 	}
 
+	voiceSample := ""
+	if server.VoiceSample.Valid {
+		voiceSample = server.VoiceSample.String
+	}
+
 	resp, err := w.LLM.Generate(ctx, llmclient.GenerateRequest{
 		CommunityType: communityType,
 		ServerName:    server.Name,
+		VoiceSample:   voiceSample,
 		Messages:      llmMsgs,
 	})
 	if err != nil {

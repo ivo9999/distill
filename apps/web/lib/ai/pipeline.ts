@@ -24,6 +24,10 @@ export interface PipelineInput {
   communityType: string;
   serverName: string;
   messages: Message[];
+  // Optional: a past newsletter the operator pasted as a style
+  // exemplar. Pass2 uses it as a voice anchor; ignored if empty or
+  // under 50 chars (anything shorter is too weak a signal).
+  voiceSample?: string;
 }
 
 export interface PipelineOutput {
@@ -76,7 +80,7 @@ export async function runPipeline(
   }));
 
   // Pass 2: Draft newsletter
-  const pass2 = await runPass2(storiesWithMessages, input.serverName);
+  const pass2 = await runPass2(storiesWithMessages, input.serverName, input.voiceSample);
 
   const model1 = process.env.AI_MODEL_PASS1 ?? "gemini-2.5-flash";
   const model2 = process.env.AI_MODEL_PASS2 ?? "gemini-2.5-pro";

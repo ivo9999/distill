@@ -109,8 +109,33 @@ func getServer(s *Server) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, server)
+		// Project to a stable JSON shape. The bare sqlc model exposes
+		// pgtype.Text as {String, Valid}, which the frontend can't
+		// parse without per-field unwrapping. This handler is the only
+		// reader of GET /api/servers/:id so we own the wire format.
+		writeJSON(w, http.StatusOK, map[string]any{
+			"id":               server.ID,
+			"user_id":          server.UserID,
+			"discord_guild_id": server.DiscordGuildID,
+			"name":             server.Name,
+			"icon_url":         textOrEmpty(server.IconUrl),
+			"community_type":   textOrEmpty(server.CommunityType),
+			"schedule_cron":    server.ScheduleCron,
+			"status":           server.Status,
+			"voice_sample":     textOrEmpty(server.VoiceSample),
+			"created_at":       server.CreatedAt.Time.Format(time.RFC3339),
+		})
 	}
+}
+
+// textOrEmpty unwraps a pgtype.Text into a plain string ("" when NULL).
+// Keeps the JSON wire format predictable for the frontend instead of
+// the {String, Valid} object pgtype marshals to by default.
+func textOrEmpty(t pgtype.Text) string {
+	if !t.Valid {
+		return ""
+	}
+	return t.String
 }
 
 type updateServerRequest struct {
@@ -118,7 +143,17 @@ type updateServerRequest struct {
 	CommunityType string `json:"community_type"`
 	ScheduleCron  string `json:"schedule_cron"`
 	Status        string `json:"status"`
+	// Pointer so we can distinguish:
+	//   nil      → caller didn't include the field — keep existing
+	//   ""       → caller wants to clear it (writes NULL via sentinel)
+	//   non-empty → caller wants to set it
+	VoiceSample *string `json:"voice_sample,omitempty"`
 }
+
+// voiceSampleSentinelClear matches the sentinel the SQL CASE in
+// UpdateServer recognizes as "set to NULL." Kept as a Go const so the
+// SQL and Go halves can't drift.
+const voiceSampleSentinelClear = "__SET_NULL__"
 
 func updateServer(s *Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -168,19 +203,42 @@ func updateServer(s *Server) http.HandlerFunc {
 			name = req.Name
 		}
 
+		// voice_sample uses the sentinel pattern: omitted → keep,
+		// empty string → clear, otherwise → set.
+		voiceSample := pgtype.Text{Valid: false}
+		if req.VoiceSample != nil {
+			if *req.VoiceSample == "" {
+				voiceSample = pgtype.Text{String: voiceSampleSentinelClear, Valid: true}
+			} else {
+				voiceSample = pgtype.Text{String: *req.VoiceSample, Valid: true}
+			}
+		}
+
 		updated, err := s.Queries.UpdateServer(r.Context(), db.UpdateServerParams{
 			ID:            serverID,
 			CommunityType: communityType,
 			ScheduleCron:  scheduleCron,
 			Status:        status,
 			Name:          name,
+			VoiceSample:   voiceSample,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to update server")
 			return
 		}
 
-		writeJSON(w, http.StatusOK, updated)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"id":               updated.ID,
+			"user_id":          updated.UserID,
+			"discord_guild_id": updated.DiscordGuildID,
+			"name":             updated.Name,
+			"icon_url":         textOrEmpty(updated.IconUrl),
+			"community_type":   textOrEmpty(updated.CommunityType),
+			"schedule_cron":    updated.ScheduleCron,
+			"status":           updated.Status,
+			"voice_sample":     textOrEmpty(updated.VoiceSample),
+			"created_at":       updated.CreatedAt.Time.Format(time.RFC3339),
+		})
 	}
 }
 

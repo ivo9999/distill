@@ -32,21 +32,28 @@ func New(baseURL, apiKey string) *Client {
 type GenerateRequest struct {
 	CommunityType string    `json:"community_type"`
 	ServerName    string    `json:"server_name"`
-	Messages      []Message `json:"messages"`
+	// Optional past-newsletter exemplar used by Pass2 as a voice
+	// anchor; the route ignores it when empty.
+	VoiceSample string    `json:"voice_sample,omitempty"`
+	Messages    []Message `json:"messages"`
 }
 
 // Message matches the TypeScript Message type.
 type Message struct {
-	ID            string `json:"id"`
-	AuthorID      string `json:"authorId"`
-	AuthorName    string `json:"authorName"`
-	Content       string `json:"content"`
-	Timestamp     string `json:"timestamp"`
-	ReactionCount int    `json:"reactionCount"`
-	ReplyCount    int    `json:"replyCount"`
-	ReplyToID     string `json:"replyToId,omitempty"`
-	ThreadID      string `json:"threadId,omitempty"`
-	ChannelName   string `json:"channelName,omitempty"`
+	ID            string  `json:"id"`
+	AuthorID      string  `json:"authorId"`
+	AuthorName    string  `json:"authorName"`
+	Content       string  `json:"content"`
+	Timestamp     string  `json:"timestamp"`
+	ReactionCount int     `json:"reactionCount"`
+	ReplyCount    int     `json:"replyCount"`
+	ReplyToID     string  `json:"replyToId,omitempty"`
+	ThreadID      string  `json:"threadId,omitempty"`
+	ChannelName   string  `json:"channelName,omitempty"`
+	// Per-channel weight (0.5 / 1.0 / 2.0 nominally). Optional so the
+	// experiment script and any legacy caller can omit it; the pipeline
+	// defaults missing values to 1.0.
+	ChannelWeight float64 `json:"channelWeight,omitempty"`
 }
 
 // GenerateResponse is the response from /api/internal/generate.

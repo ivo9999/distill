@@ -4,6 +4,8 @@ import type { Story, Message } from "./pass1";
 
 const PASS2_PROMPT = `You are writing a weekly newsletter for {{COMMUNITY_NAME}}. Your job is to turn this week's top community moments into a draft the community owner can edit and publish.
 
+{{VOICE_ANCHOR}}
+
 VOICE: Conversational, warm, slightly nerdy. Address the reader as "you." First-person plural ("we") when referring to the community. Never use the phrases "in this article", "let's dive in", "without further ado", "in conclusion", "game-changer", or any LinkedIn-flavored language. If you find yourself writing those, stop and rewrite.
 
 STRUCTURE:
@@ -31,10 +33,26 @@ export interface StoryWithMessages extends Story {
 
 export async function runPass2(
   stories: StoryWithMessages[],
-  communityName: string
+  communityName: string,
+  voiceSample?: string,
 ): Promise<{ markdown: string; tokensIn: number; tokensOut: number }> {
+  // VOICE_ANCHOR — if the operator has pasted a past newsletter as a
+  // style exemplar, surface it as an explicit anchor BEFORE the
+  // general VOICE rules. Models copy tone, rhythm, and idiom from
+  // concrete examples far more reliably than from abstract
+  // descriptors. Cap to ~5000 chars so a long sample doesn't dominate
+  // the prompt budget or push token cost up materially. The "anchor
+  // wins on tone, hard rules still apply" language is load-bearing —
+  // without it the model will sometimes adopt a sample's bad habits
+  // (e.g. exclamation overuse) AND drop the anti-hallucination rules.
+  const voiceAnchor =
+    voiceSample && voiceSample.trim().length > 50
+      ? `VOICE ANCHOR — the operator pasted this past newsletter as a tone example. Match its rhythm, sentence length, idiom, and warmth. Do NOT copy phrases or specific facts; only the voice. If it conflicts with the VOICE rules below, the anchor wins on tone but the hard rules below still apply.\n\n<example>\n${voiceSample.slice(0, 5000)}\n</example>`
+      : "";
+
   const prompt = PASS2_PROMPT
     .replace("{{COMMUNITY_NAME}}", communityName)
+    .replace("{{VOICE_ANCHOR}}", voiceAnchor)
     .replace(
       "{{TOP_STORIES_WITH_MESSAGES}}",
       JSON.stringify(stories, null, 2)

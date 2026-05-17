@@ -5,6 +5,7 @@ import { runPipeline, type Message } from "@/lib/ai/pipeline";
 const RequestSchema = z.object({
   community_type: z.string(),
   server_name: z.string(),
+  voice_sample: z.string().optional(),
   messages: z.array(
     z.object({
       id: z.string(),
@@ -17,6 +18,7 @@ const RequestSchema = z.object({
       replyToId: z.string().optional(),
       threadId: z.string().optional(),
       channelName: z.string().optional(),
+      channelWeight: z.number().optional(),
     })
   ),
 });
@@ -36,12 +38,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { community_type, server_name, messages } = parsed.data;
+  const { community_type, server_name, messages, voice_sample } = parsed.data;
 
   const result = await runPipeline({
     communityType: community_type,
     serverName: server_name,
     messages: messages as Message[],
+    voiceSample: voice_sample,
   });
 
   return NextResponse.json(result);

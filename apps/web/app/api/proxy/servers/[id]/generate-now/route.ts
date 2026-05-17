@@ -97,6 +97,7 @@ export async function POST(
       communityType,
       serverName: server.name,
       messages: allMessages,
+      voiceSample: typeof server.voice_sample === "string" ? server.voice_sample : undefined,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

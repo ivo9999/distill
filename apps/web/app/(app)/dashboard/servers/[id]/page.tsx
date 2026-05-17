@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -91,6 +92,7 @@ export default function ServerSettingsPage() {
   const [serverName, setServerName] = useState("");
   const [guildId, setGuildId] = useState("");
   const [communityType, setCommunityType] = useState("");
+  const [voiceSample, setVoiceSample] = useState("");
   const [scheduleDay, setScheduleDay] = useState("0");
   const [scheduleHour, setScheduleHour] = useState("18");
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -112,6 +114,7 @@ export default function ServerSettingsPage() {
         setServerName(server.name || "");
         setGuildId(server.discord_guild_id || "");
         setCommunityType(server.community_type || "");
+        setVoiceSample(server.voice_sample || "");
         const { day, hour } = parseCron(server.schedule_cron || "0 18 * * 0");
         setScheduleDay(day);
         setScheduleHour(hour);
@@ -133,6 +136,10 @@ export default function ServerSettingsPage() {
       body: JSON.stringify({
         community_type: communityType,
         schedule_cron: buildCron(scheduleDay, scheduleHour),
+        // Send "" to explicitly clear the field; the server sentinel
+        // translates that to SQL NULL. Always sending (even when
+        // unchanged) is cheap and avoids tracking dirty state.
+        voice_sample: voiceSample,
       }),
     });
     setSaving(false);
@@ -194,6 +201,32 @@ export default function ServerSettingsPage() {
             />
             <p className="text-xs text-ink-dark">
               Helps the AI understand the tone and context of your community.
+            </p>
+          </div>
+
+          {/* Voice sample — paste a past newsletter for the AI to
+              mirror. Optional; if blank, Pass2 falls back to its
+              default voice rules. This is the single biggest
+              perceived-quality lever on first run, so we surface it
+              with a longer help line than the other fields. */}
+          <div className="space-y-2">
+            <div className="flex items-end justify-between">
+              <Label htmlFor="voice-sample">Voice sample (optional)</Label>
+              <span className="text-xs text-ink-dark">
+                {voiceSample.length}/5000
+              </span>
+            </div>
+            <Textarea
+              id="voice-sample"
+              placeholder={`Paste a past newsletter, blog post, or anything you've written for this audience. The AI will match its rhythm and warmth — without copying phrases.\n\nLeave blank for default voice.`}
+              value={voiceSample}
+              onChange={(e) => setVoiceSample(e.target.value.slice(0, 5000))}
+              rows={6}
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-ink-dark">
+              The AI mirrors voice from concrete examples better than from
+              descriptions. One or two paragraphs of your own writing is plenty.
             </p>
           </div>
 

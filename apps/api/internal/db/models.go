@@ -82,6 +82,7 @@ type Server struct {
 	ScheduleCron   string             `json:"schedule_cron"`
 	Status         string             `json:"status"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	VoiceSample    pgtype.Text        `json:"voice_sample"`
 }
 
 type User struct {

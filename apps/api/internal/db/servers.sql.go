@@ -18,7 +18,7 @@ ON CONFLICT (user_id, discord_guild_id) DO UPDATE SET
     name = EXCLUDED.name,
     icon_url = EXCLUDED.icon_url,
     status = 'active'
-RETURNING id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at
+RETURNING id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at, voice_sample
 `
 
 type CreateServerParams struct {
@@ -48,12 +48,13 @@ func (q *Queries) CreateServer(ctx context.Context, arg CreateServerParams) (Ser
 		&i.ScheduleCron,
 		&i.Status,
 		&i.CreatedAt,
+		&i.VoiceSample,
 	)
 	return i, err
 }
 
 const getServerByGuildID = `-- name: GetServerByGuildID :one
-SELECT id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at FROM servers WHERE discord_guild_id = $1 AND status = 'active'
+SELECT id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at, voice_sample FROM servers WHERE discord_guild_id = $1 AND status = 'active'
 `
 
 func (q *Queries) GetServerByGuildID(ctx context.Context, discordGuildID string) (Server, error) {
@@ -69,12 +70,13 @@ func (q *Queries) GetServerByGuildID(ctx context.Context, discordGuildID string)
 		&i.ScheduleCron,
 		&i.Status,
 		&i.CreatedAt,
+		&i.VoiceSample,
 	)
 	return i, err
 }
 
 const getServerByID = `-- name: GetServerByID :one
-SELECT id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at FROM servers WHERE id = $1
+SELECT id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at, voice_sample FROM servers WHERE id = $1
 `
 
 func (q *Queries) GetServerByID(ctx context.Context, id pgtype.UUID) (Server, error) {
@@ -90,12 +92,13 @@ func (q *Queries) GetServerByID(ctx context.Context, id pgtype.UUID) (Server, er
 		&i.ScheduleCron,
 		&i.Status,
 		&i.CreatedAt,
+		&i.VoiceSample,
 	)
 	return i, err
 }
 
 const listActiveServersForSchedule = `-- name: ListActiveServersForSchedule :many
-SELECT s.id, s.user_id, s.discord_guild_id, s.name, s.icon_url, s.community_type, s.schedule_cron, s.status, s.created_at FROM servers s
+SELECT s.id, s.user_id, s.discord_guild_id, s.name, s.icon_url, s.community_type, s.schedule_cron, s.status, s.created_at, s.voice_sample FROM servers s
 JOIN users u ON s.user_id = u.id
 WHERE s.status = 'active'
   AND u.subscription_status = 'active'
@@ -120,6 +123,7 @@ func (q *Queries) ListActiveServersForSchedule(ctx context.Context) ([]Server, e
 			&i.ScheduleCron,
 			&i.Status,
 			&i.CreatedAt,
+			&i.VoiceSample,
 		); err != nil {
 			return nil, err
 		}
@@ -132,7 +136,7 @@ func (q *Queries) ListActiveServersForSchedule(ctx context.Context) ([]Server, e
 }
 
 const listServersByUserID = `-- name: ListServersByUserID :many
-SELECT id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at FROM servers WHERE user_id = $1 AND status != 'removed' ORDER BY created_at DESC
+SELECT id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at, voice_sample FROM servers WHERE user_id = $1 AND status != 'removed' ORDER BY created_at DESC
 `
 
 func (q *Queries) ListServersByUserID(ctx context.Context, userID pgtype.UUID) ([]Server, error) {
@@ -154,6 +158,7 @@ func (q *Queries) ListServersByUserID(ctx context.Context, userID pgtype.UUID) (
 			&i.ScheduleCron,
 			&i.Status,
 			&i.CreatedAt,
+			&i.VoiceSample,
 		); err != nil {
 			return nil, err
 		}
@@ -179,9 +184,14 @@ UPDATE servers SET
     community_type = COALESCE($2, community_type),
     schedule_cron = COALESCE($3, schedule_cron),
     status = COALESCE($4, status),
-    name = COALESCE($5, name)
+    name = COALESCE($5, name),
+    voice_sample = CASE
+        WHEN $6::text IS NULL THEN voice_sample
+        WHEN $6::text = '__SET_NULL__' THEN NULL
+        ELSE $6::text
+    END
 WHERE id = $1
-RETURNING id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at
+RETURNING id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at, voice_sample
 `
 
 type UpdateServerParams struct {
@@ -190,8 +200,14 @@ type UpdateServerParams struct {
 	ScheduleCron  string      `json:"schedule_cron"`
 	Status        string      `json:"status"`
 	Name          string      `json:"name"`
+	VoiceSample   pgtype.Text `json:"voice_sample"`
 }
 
+// The $6 voice_sample arg uses a small sentinel pattern: pass the
+// literal string "__SET_NULL__" to clear the voice sample; pass NULL
+// to keep the existing value. Plain COALESCE can't say "set to NULL
+// only when the caller meant to" — it conflates "field omitted" with
+// "explicit clear" — so we need a CASE.
 func (q *Queries) UpdateServer(ctx context.Context, arg UpdateServerParams) (Server, error) {
 	row := q.db.QueryRow(ctx, updateServer,
 		arg.ID,
@@ -199,6 +215,7 @@ func (q *Queries) UpdateServer(ctx context.Context, arg UpdateServerParams) (Ser
 		arg.ScheduleCron,
 		arg.Status,
 		arg.Name,
+		arg.VoiceSample,
 	)
 	var i Server
 	err := row.Scan(
@@ -211,6 +228,7 @@ func (q *Queries) UpdateServer(ctx context.Context, arg UpdateServerParams) (Ser
 		&i.ScheduleCron,
 		&i.Status,
 		&i.CreatedAt,
+		&i.VoiceSample,
 	)
 	return i, err
 }
