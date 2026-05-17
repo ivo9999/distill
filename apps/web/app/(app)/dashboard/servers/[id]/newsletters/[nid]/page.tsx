@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Save, Send, Eye, Pencil, ExternalLink, ChevronDown, ChevronRight, MessageSquare, Wand2, Scissors, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Send, Eye, Pencil, Mail, ExternalLink, ChevronDown, ChevronRight, MessageSquare, Wand2, Scissors, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -121,6 +121,127 @@ function removeSection(markdown: string, storyId: string): string {
   return `${before}${after}`;
 }
 
+// EmailFramePreview renders the markdown as it'll appear in a typical
+// inbox: a 600px-wide white card with serif body, blue links, modest
+// line height, and a fake From/Subject header that anchors the visual
+// metaphor. The styles are inlined (style attribute) rather than
+// using Tailwind utility classes so the frame is visually stable
+// regardless of dark mode — inboxes don't honor the dashboard theme.
+function EmailFramePreview({ content, fromName }: { content: string; fromName: string }) {
+  // Derive a subject line from the first heading or the first
+  // sentence of the hook — same heuristic the user would write
+  // manually when they pick a subject. The publish flow lets them
+  // override; this is just the preview default.
+  const subject = derivePreviewSubject(content);
+  return (
+    <div className="mx-auto max-w-[680px] space-y-3">
+      <div className="rounded-md bg-ink-lightest/60 px-4 py-3 text-xs text-ink-dark">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>
+            <span className="font-medium text-ink">From:</span> {fromName}
+          </span>
+          <span>
+            <span className="font-medium text-ink">To:</span> you@example.com
+          </span>
+        </div>
+        <div className="mt-1">
+          <span className="font-medium text-ink">Subject:</span>{" "}
+          <span className="text-ink">{subject}</span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          background: "#ffffff",
+          color: "#1a1a1a",
+          padding: "32px 40px",
+          borderRadius: "8px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)",
+          border: "1px solid #e5e7eb",
+        }}
+      >
+        <article
+          className="email-preview-body"
+          style={{
+            fontFamily:
+              'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif',
+            fontSize: "16px",
+            lineHeight: "1.6",
+          }}
+        >
+          <ReactMarkdown
+            components={{
+              h2: (props) => (
+                <h2
+                  {...props}
+                  style={{
+                    fontFamily:
+                      'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+                    fontSize: "22px",
+                    fontWeight: 600,
+                    marginTop: "32px",
+                    marginBottom: "12px",
+                    lineHeight: 1.3,
+                  }}
+                />
+              ),
+              p: (props) => (
+                <p {...props} style={{ margin: "0 0 16px 0", color: "#1a1a1a" }} />
+              ),
+              a: (props) => (
+                <a
+                  {...props}
+                  style={{ color: "#1d4ed8", textDecoration: "underline" }}
+                />
+              ),
+              em: (props) => (
+                <em {...props} style={{ color: "#4b5563", fontStyle: "italic" }} />
+              ),
+              strong: (props) => (
+                <strong {...props} style={{ color: "#0f172a" }} />
+              ),
+              ul: (props) => (
+                <ul
+                  {...props}
+                  style={{ paddingLeft: "24px", margin: "0 0 16px 0" }}
+                />
+              ),
+              li: (props) => (
+                <li {...props} style={{ margin: "0 0 4px 0" }} />
+              ),
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        </article>
+      </div>
+
+      <p className="text-center text-[11px] text-ink-dark">
+        Preview only — real subject + footer are set when you publish.
+      </p>
+    </div>
+  );
+}
+
+// derivePreviewSubject pulls a reasonable subject candidate from the
+// draft for the email-preview header. Tries the first ## heading
+// first ("Members debate Discord rate limits"), then the first
+// sentence of the hook, then a fallback. This is preview-only — the
+// publish flow has its own subject input.
+function derivePreviewSubject(content: string): string {
+  const heading = /^##\s+(.+?)\s*$/m.exec(content);
+  if (heading) return heading[1].slice(0, 80);
+  const firstLine = content
+    .split(/\n+/)
+    .map((s) => s.trim())
+    .find((s) => s.length > 0);
+  if (firstLine) {
+    const sentence = /^(.{8,120}?[.!?])(?:\s|$)/.exec(firstLine);
+    return (sentence ? sentence[1] : firstLine).slice(0, 80);
+  }
+  return "Your weekly newsletter";
+}
+
 const platforms = [
   { id: "beehiiv", name: "Beehiiv", desc: "Email newsletter platform" },
   { id: "convertkit", name: "ConvertKit", desc: "Creator email marketing" },
@@ -141,10 +262,11 @@ export default function NewsletterEditorPage() {
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"edit" | "preview">("edit");
+  const [tab, setTab] = useState<"edit" | "preview" | "email">("edit");
   const [isSubscribed, setIsSubscribed] = useState<boolean | null>(null);
   const [sources, setSources] = useState<SourceSection[]>([]);
   const [guildId, setGuildId] = useState<string>("");
+  const [serverName, setServerName] = useState<string>("");
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
@@ -167,10 +289,14 @@ export default function NewsletterEditorPage() {
       .then((u) => setIsSubscribed(u?.subscription_status === "active"))
       .catch(() => setIsSubscribed(false));
 
-    // Need the guild ID for Discord permalinks in the source list.
+    // Need the guild ID for Discord permalinks in the source list,
+    // and the server name for the email-preview "from" header.
     fetch(`/api/proxy/servers/${serverId}`)
       .then((r) => r.json())
-      .then((s) => setGuildId(s?.discord_guild_id || ""))
+      .then((s) => {
+        setGuildId(s?.discord_guild_id || "");
+        setServerName(s?.name || "");
+      })
       .catch(() => {});
   }, [newsletterId, serverId]);
 
@@ -323,11 +449,14 @@ export default function NewsletterEditorPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Mobile tab toggle */}
-          <div className="flex md:hidden border rounded-lg overflow-hidden">
+          {/* Pane toggle. On desktop, "Edit" + "Preview" can run
+              side-by-side so the toggle only flips the preview pane
+              between markdown-render and email-render. On mobile,
+              the toggle picks one of three exclusive panes. */}
+          <div className="flex border rounded-lg overflow-hidden">
             <button
               onClick={() => setTab("edit")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`flex md:hidden items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
                 tab === "edit"
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
@@ -343,9 +472,22 @@ export default function NewsletterEditorPage() {
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
               }`}
+              title="Markdown preview"
             >
               <Eye className="h-3 w-3" />
               Preview
+            </button>
+            <button
+              onClick={() => setTab("email")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+                tab === "email"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="See this as an email"
+            >
+              <Mail className="h-3 w-3" />
+              Email
             </button>
           </div>
 
@@ -417,11 +559,20 @@ export default function NewsletterEditorPage() {
         </div>
       </div>
 
-      {/* Editor / Preview split */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-0">
-        {/* Editor pane */}
+      {/* Editor / Preview split. In email mode, the preview pane goes
+          full-width so the 600px email frame has room to breathe; the
+          markdown editor is one tab-flip away. */}
+      <div
+        className={`flex-1 grid grid-cols-1 min-h-0 ${
+          tab === "email" ? "" : "md:grid-cols-2"
+        }`}
+      >
+        {/* Editor pane — hidden in email mode entirely; hidden on
+            mobile when the user is in preview mode. */}
         <div
-          className={`flex flex-col border-r ${tab === "preview" ? "hidden md:flex" : ""}`}
+          className={`flex flex-col border-r ${
+            tab === "email" ? "hidden" : tab === "preview" ? "hidden md:flex" : ""
+          }`}
         >
           <div className="px-4 py-2 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:block">
             Markdown
@@ -440,22 +591,33 @@ export default function NewsletterEditorPage() {
           className={`flex flex-col min-h-0 ${tab === "edit" ? "hidden md:flex" : ""}`}
         >
           <div className="px-4 py-2 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:block">
-            Preview
+            {tab === "email" ? "Email preview" : "Preview"}
           </div>
           <div className="flex-1 overflow-y-auto p-6 space-y-8">
-            <article className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-foreground prose-strong:text-foreground">
-              {/*
-                Strip the <!-- story:slug --> markers before rendering.
-                React-markdown handles HTML comments natively
-                (they're parsed as raw blocks) but rendering them as
-                visible text would be ugly; easier to just strip.
-              */}
-              <ReactMarkdown>
-                {content.replace(/<!--\s*story:[^>]*-->\s*/g, "")}
-              </ReactMarkdown>
-            </article>
+            {tab === "email" ? (
+              // Email-shape preview: 600px frame, white card, fake
+              // From/Subject header. This is the "I can send this on
+              // Sunday" moment — the same content as the markdown
+              // preview, but rendered as it'll look in the inbox.
+              <EmailFramePreview
+                content={content.replace(/<!--\s*story:[^>]*-->\s*/g, "")}
+                fromName={serverName || "Your community"}
+              />
+            ) : (
+              <article className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-foreground prose-strong:text-foreground">
+                {/*
+                  Strip the story-id markers before rendering.
+                  React-markdown handles HTML comments natively
+                  (they're parsed as raw blocks) but they'd render as
+                  visible text, so easier to just strip.
+                */}
+                <ReactMarkdown>
+                  {content.replace(/<!--\s*story:[^>]*-->\s*/g, "")}
+                </ReactMarkdown>
+              </article>
+            )}
 
-            {sources.length > 0 && (
+            {sources.length > 0 && tab !== "email" && (
               <section className="border-t pt-6">
                 <header className="mb-3 flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-ink-dark" />
