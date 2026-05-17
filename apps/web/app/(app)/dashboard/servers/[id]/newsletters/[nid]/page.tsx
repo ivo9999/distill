@@ -25,6 +25,18 @@ import {
 
 type RegenerateDirective = "tighter" | "funnier" | "more_detail" | "rewrite_from_messages";
 
+interface SubjectLineOption {
+  text: string;
+  rationale: string;
+  style: "topical" | "curiosity" | "punchy";
+}
+
+const SUBJECT_STYLE_LABELS: Record<SubjectLineOption["style"], string> = {
+  topical: "Topical",
+  curiosity: "Curiosity",
+  punchy: "Punchy",
+};
+
 const DIRECTIVE_LABELS: Record<RegenerateDirective, { label: string; hint: string }> = {
   tighter: { label: "Make it tighter", hint: "~30% shorter, same content" },
   funnier: { label: "Add a touch of humor", hint: "One dry, observational line" },
@@ -270,6 +282,10 @@ export default function NewsletterEditorPage() {
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
+  const [subject, setSubject] = useState<string>("Weekly Newsletter");
+  const [subjectOptions, setSubjectOptions] = useState<SubjectLineOption[]>([]);
+  const [subjectLoading, setSubjectLoading] = useState(false);
+  const [subjectError, setSubjectError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/proxy/newsletters/${newsletterId}`)
@@ -372,6 +388,31 @@ export default function NewsletterEditorPage() {
     setTimeout(() => setSaved(false), 2000);
   }, [newsletterId, content]);
 
+  const handleSuggestSubjects = async () => {
+    setSubjectLoading(true);
+    setSubjectError(null);
+    try {
+      const res = await fetch(
+        `/api/proxy/newsletters/${newsletterId}/subject-lines`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currentMarkdown: content }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(data.options)) {
+        setSubjectError(data?.error || "Couldn't generate subject lines.");
+        return;
+      }
+      setSubjectOptions(data.options as SubjectLineOption[]);
+    } catch {
+      setSubjectError("Couldn't reach the subject-line service.");
+    } finally {
+      setSubjectLoading(false);
+    }
+  };
+
   const handlePublish = async () => {
     if (!selectedPlatform) return;
     setPublishing(true);
@@ -381,7 +422,7 @@ export default function NewsletterEditorPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         platform: selectedPlatform,
-        subject: "Weekly Newsletter",
+        subject: subject.trim() || "Weekly Newsletter",
       }),
     });
     setPublishing(false);
@@ -514,14 +555,79 @@ export default function NewsletterEditorPage() {
                   Publish
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Publish Newsletter</DialogTitle>
+                  <DialogTitle>Publish newsletter</DialogTitle>
                   <DialogDescription>
-                    Choose where to publish this newsletter.
+                    Pick a subject line and a destination.
                   </DialogDescription>
                 </DialogHeader>
+
+                {/* Subject + AI suggestions. This is the friction
+                    point that stalls Sunday-night publishing — the
+                    user has to invent a subject in the moment, with
+                    none of the context they had while drafting. The
+                    AI suggester turns this into a 3-option pick. */}
                 <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-ink">Subject</label>
+                    <button
+                      type="button"
+                      onClick={handleSuggestSubjects}
+                      disabled={subjectLoading || !content.trim()}
+                      className="inline-flex items-center gap-1 text-xs text-link hover:underline disabled:opacity-50"
+                    >
+                      {subjectLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-3 w-3" />
+                      )}
+                      Suggest 3 options
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    maxLength={100}
+                    className="w-full rounded-md border border-ink-lighter bg-background px-3 py-2 text-sm focus:outline-none focus:border-ink-medium"
+                    placeholder="Your inbox subject line"
+                  />
+                  {subjectError && (
+                    <p className="text-xs text-negative">{subjectError}</p>
+                  )}
+                  {subjectOptions.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      {subjectOptions.map((o) => (
+                        <button
+                          key={o.text}
+                          type="button"
+                          onClick={() => setSubject(o.text)}
+                          className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
+                            subject === o.text
+                              ? "border-foreground bg-muted"
+                              : "border-ink-lighter hover:border-ink-medium"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-sm font-medium">{o.text}</span>
+                            <span className="shrink-0 rounded-pill bg-ink-lighter px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-dark">
+                              {SUBJECT_STYLE_LABELS[o.style]}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[11px] text-ink-dark">
+                            {o.rationale}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 border-t border-ink-lighter pt-3">
+                  <label className="text-xs font-medium text-ink">
+                    Destination
+                  </label>
                   {platforms.map((platform) => (
                     <button
                       key={platform.id}
@@ -541,13 +647,14 @@ export default function NewsletterEditorPage() {
                     </button>
                   ))}
                 </div>
+
                 {publishError && (
                   <p className="text-sm text-negative">{publishError}</p>
                 )}
                 <DialogFooter>
                   <Button
                     onClick={handlePublish}
-                    disabled={!selectedPlatform || publishing}
+                    disabled={!selectedPlatform || publishing || !subject.trim()}
                     size="sm"
                   >
                     {publishing ? "Publishing..." : "Publish"}
