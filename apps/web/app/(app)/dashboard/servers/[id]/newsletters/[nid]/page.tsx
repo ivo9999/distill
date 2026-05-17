@@ -13,7 +13,49 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Save, Send, Eye, Pencil } from "lucide-react";
+import { ArrowLeft, Save, Send, Eye, Pencil, ExternalLink, ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
+
+interface SourceMessage {
+  id: string;
+  authorName: string;
+  content: string;
+  timestamp: string;
+  channelName?: string;
+  discordChannelId?: string;
+}
+
+interface SourceSection {
+  storyId: string;
+  type: string;
+  title: string;
+  whyItMatters: string;
+  messages: SourceMessage[];
+}
+
+// Build a Discord deep-link to a specific message. Discord exposes
+// this scheme publicly: https://discord.com/channels/<g>/<c>/<m>.
+// Clicking it lands the user inside the Discord client (or the web
+// app) at the exact thread context — the single most powerful trust
+// signal we can give: "click and verify what we summarized."
+function discordPermalink(guildId: string, channelId: string | undefined, messageId: string): string | null {
+  if (!guildId || !channelId) return null;
+  return `https://discord.com/channels/${guildId}/${channelId}/${messageId}`;
+}
+
+// Short, human-friendly relative time for source message stamps.
+// Used in the "view sources" list — exact dates aren't useful when
+// the user is just confirming "yes, this thread happened."
+function relTime(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const diff = Date.now() - t;
+  const m = Math.floor(diff / 60_000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
 
 const platforms = [
   { id: "beehiiv", name: "Beehiiv", desc: "Email newsletter platform" },
@@ -37,6 +79,9 @@ export default function NewsletterEditorPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [isSubscribed, setIsSubscribed] = useState<boolean | null>(null);
+  const [sources, setSources] = useState<SourceSection[]>([]);
+  const [guildId, setGuildId] = useState<string>("");
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch(`/api/proxy/newsletters/${newsletterId}`)
@@ -44,6 +89,9 @@ export default function NewsletterEditorPage() {
       .then((data) => {
         setContent(data.edited_markdown || data.draft_markdown || "");
         setGeneratedAt(data.created_at);
+        if (Array.isArray(data.sources)) {
+          setSources(data.sources as SourceSection[]);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -52,7 +100,22 @@ export default function NewsletterEditorPage() {
       .then((r) => r.json())
       .then((u) => setIsSubscribed(u?.subscription_status === "active"))
       .catch(() => setIsSubscribed(false));
-  }, [newsletterId]);
+
+    // Need the guild ID for Discord permalinks in the source list.
+    fetch(`/api/proxy/servers/${serverId}`)
+      .then((r) => r.json())
+      .then((s) => setGuildId(s?.discord_guild_id || ""))
+      .catch(() => {});
+  }, [newsletterId, serverId]);
+
+  const toggleSource = (id: string) => {
+    setExpandedSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -262,10 +325,115 @@ export default function NewsletterEditorPage() {
           <div className="px-4 py-2 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:block">
             Preview
           </div>
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-6 space-y-8">
             <article className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-foreground prose-strong:text-foreground">
-              <ReactMarkdown>{content}</ReactMarkdown>
+              {/*
+                Strip the <!-- story:slug --> markers before rendering.
+                React-markdown handles HTML comments natively
+                (they're parsed as raw blocks) but rendering them as
+                visible text would be ugly; easier to just strip.
+              */}
+              <ReactMarkdown>
+                {content.replace(/<!--\s*story:[^>]*-->\s*/g, "")}
+              </ReactMarkdown>
             </article>
+
+            {sources.length > 0 && (
+              <section className="border-t pt-6">
+                <header className="mb-3 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-ink-dark" />
+                  <h3 className="text-sm font-semibold">Source messages</h3>
+                  <span className="text-xs text-ink-dark">
+                    — every section, traced back to the Discord threads it came from.
+                  </span>
+                </header>
+                <ul className="space-y-2">
+                  {sources.map((s) => {
+                    const open = expandedSources.has(s.storyId);
+                    return (
+                      <li
+                        key={s.storyId}
+                        className="rounded-md border border-ink-lighter bg-ink-lightest/40"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleSource(s.storyId)}
+                          className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-ink-lightest"
+                        >
+                          {open ? (
+                            <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-dark" />
+                          ) : (
+                            <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-dark" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-sm font-medium">
+                                {s.title}
+                              </span>
+                              <span className="shrink-0 rounded-pill bg-ink-lighter px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-dark">
+                                {s.type}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 text-xs text-ink-dark">
+                              {s.whyItMatters}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs text-ink-dark">
+                            {s.messages.length}{" "}
+                            {s.messages.length === 1 ? "message" : "messages"}
+                          </span>
+                        </button>
+                        {open && (
+                          <ul className="space-y-1 border-t border-ink-lighter px-3 py-2">
+                            {s.messages.map((m) => {
+                              const url = discordPermalink(
+                                guildId,
+                                m.discordChannelId,
+                                m.id,
+                              );
+                              return (
+                                <li
+                                  key={m.id}
+                                  className="rounded bg-background/60 p-2 text-xs"
+                                >
+                                  <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-ink-dark">
+                                    <span className="font-medium text-ink">
+                                      {m.authorName}
+                                    </span>
+                                    {m.channelName && (
+                                      <span className="text-ink-dark">
+                                        #{m.channelName}
+                                      </span>
+                                    )}
+                                    <span className="text-ink-dark">
+                                      {relTime(m.timestamp)}
+                                    </span>
+                                    {url && (
+                                      <a
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="ml-auto inline-flex items-center gap-1 text-ink-dark hover:text-link"
+                                      >
+                                        View in Discord
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    )}
+                                  </div>
+                                  <p className="whitespace-pre-wrap break-words text-ink-dark">
+                                    {m.content}
+                                  </p>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
           </div>
         </div>
       </div>

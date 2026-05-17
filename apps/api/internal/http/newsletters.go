@@ -15,13 +15,18 @@ import (
 )
 
 type createNewsletterRequest struct {
-	DraftMarkdown  string  `json:"draft_markdown"`
-	CostUsd        float64 `json:"cost_usd"`
-	Pass1TokensIn  int32   `json:"pass1_tokens_in"`
-	Pass1TokensOut int32   `json:"pass1_tokens_out"`
-	Pass2TokensIn  int32   `json:"pass2_tokens_in"`
-	Pass2TokensOut int32   `json:"pass2_tokens_out"`
-	IsOnDemand     bool    `json:"is_on_demand"`
+	DraftMarkdown  string          `json:"draft_markdown"`
+	CostUsd        float64         `json:"cost_usd"`
+	Pass1TokensIn  int32           `json:"pass1_tokens_in"`
+	Pass1TokensOut int32           `json:"pass1_tokens_out"`
+	Pass2TokensIn  int32           `json:"pass2_tokens_in"`
+	Pass2TokensOut int32           `json:"pass2_tokens_out"`
+	IsOnDemand     bool            `json:"is_on_demand"`
+	// Per-section source-message map produced by the TS pipeline.
+	// json.RawMessage so we forward it to JSONB unchanged — we don't
+	// validate the shape here (the pipeline owns it); the editor side
+	// is the only reader.
+	Sources json.RawMessage `json:"sources,omitempty"`
 }
 
 func createNewsletter(s *Server) http.HandlerFunc {
@@ -89,6 +94,11 @@ func createNewsletter(s *Server) http.HandlerFunc {
 		var costNum pgtype.Numeric
 		_ = costNum.Scan(fmt.Sprintf("%f", req.CostUsd))
 
+		sources := []byte("[]")
+		if len(req.Sources) > 0 {
+			sources = req.Sources
+		}
+
 		nl, err := s.Queries.CreateNewsletter(r.Context(), db.CreateNewsletterParams{
 			ServerID:       serverID,
 			PeriodStart:    periodStart,
@@ -102,6 +112,7 @@ func createNewsletter(s *Server) http.HandlerFunc {
 			Pass2TokensOut: req.Pass2TokensOut,
 			ErrorMessage:   pgtype.Text{Valid: false},
 			IsOnDemand:     req.IsOnDemand,
+			Sources:        sources,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to create newsletter")
@@ -257,7 +268,41 @@ func getNewsletter(s *Server) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, nl)
+		writeJSON(w, http.StatusOK, projectNewsletter(nl))
+	}
+}
+
+// projectNewsletter rewrites the bare sqlc Newsletter into a JSON
+// shape the frontend can consume: sources arrives as JSON-encoded
+// JSONB ([]byte) and would otherwise emit as base64; we splice it
+// in as json.RawMessage so it round-trips as-is.
+func projectNewsletter(nl db.Newsletter) map[string]any {
+	var sources json.RawMessage
+	if len(nl.Sources) > 0 {
+		sources = json.RawMessage(nl.Sources)
+	} else {
+		sources = json.RawMessage("[]")
+	}
+	return map[string]any{
+		"id":               nl.ID,
+		"server_id":        nl.ServerID,
+		"period_start":     nl.PeriodStart,
+		"period_end":       nl.PeriodEnd,
+		"status":           nl.Status,
+		"draft_markdown":   nl.DraftMarkdown,
+		"edited_markdown":  textOrEmpty(nl.EditedMarkdown),
+		"published_at":     nl.PublishedAt,
+		"published_url":    textOrEmpty(nl.PublishedUrl),
+		"cost_usd":         nl.CostUsd,
+		"pass1_tokens_in":  nl.Pass1TokensIn,
+		"pass1_tokens_out": nl.Pass1TokensOut,
+		"pass2_tokens_in":  nl.Pass2TokensIn,
+		"pass2_tokens_out": nl.Pass2TokensOut,
+		"error_message":    textOrEmpty(nl.ErrorMessage),
+		"created_at":       nl.CreatedAt,
+		"updated_at":       nl.UpdatedAt,
+		"is_on_demand":     nl.IsOnDemand,
+		"sources":          sources,
 	}
 }
 

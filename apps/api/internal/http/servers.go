@@ -346,33 +346,41 @@ func listMessages(s *Server) http.HandlerFunc {
 			return
 		}
 
-		// Build channel name + weight lookup. Weight is exposed per
-		// message so the TS pipeline can scale engagement_signal at
-		// rank time without a second round-trip.
+		// Build channel name + discord_id + weight lookup. Weight is
+		// exposed per message so the TS pipeline can scale
+		// engagement_signal at rank time without a second round-trip;
+		// discord_channel_id is exposed so the editor can build
+		// permalinks of the form discord.com/channels/<g>/<c>/<m>.
 		channels, _ := s.Queries.ListMonitoredChannels(r.Context(), serverID)
 		type chInfo struct {
-			name   string
-			weight float64
+			name      string
+			discordID string
+			weight    float64
 		}
 		channelByID := make(map[string]chInfo)
 		for _, ch := range channels {
 			uid := fmt.Sprintf("%x-%x-%x-%x-%x",
 				ch.ID.Bytes[0:4], ch.ID.Bytes[4:6], ch.ID.Bytes[6:8], ch.ID.Bytes[8:10], ch.ID.Bytes[10:16])
-			channelByID[uid] = chInfo{name: ch.Name, weight: numericToFloat(ch.Weight, 1.0)}
+			channelByID[uid] = chInfo{
+				name:      ch.Name,
+				discordID: ch.DiscordChannelID,
+				weight:    numericToFloat(ch.Weight, 1.0),
+			}
 		}
 
 		type messageResponse struct {
-			ID            string  `json:"id"`
-			AuthorID      string  `json:"author_id"`
-			AuthorName    string  `json:"author_name"`
-			Content       string  `json:"content"`
-			Timestamp     string  `json:"timestamp"`
-			ReactionCount int32   `json:"reaction_count"`
-			ReplyCount    int32   `json:"reply_count"`
-			ReplyToID     string  `json:"reply_to_id,omitempty"`
-			ThreadID      string  `json:"thread_id,omitempty"`
-			ChannelName   string  `json:"channel_name"`
-			ChannelWeight float64 `json:"channel_weight"`
+			ID               string  `json:"id"`
+			AuthorID         string  `json:"author_id"`
+			AuthorName       string  `json:"author_name"`
+			Content          string  `json:"content"`
+			Timestamp        string  `json:"timestamp"`
+			ReactionCount    int32   `json:"reaction_count"`
+			ReplyCount       int32   `json:"reply_count"`
+			ReplyToID        string  `json:"reply_to_id,omitempty"`
+			ThreadID         string  `json:"thread_id,omitempty"`
+			ChannelName      string  `json:"channel_name"`
+			ChannelWeight    float64 `json:"channel_weight"`
+			DiscordChannelID string  `json:"discord_channel_id"`
 		}
 
 		resp := make([]messageResponse, 0, len(messages))
@@ -384,15 +392,16 @@ func listMessages(s *Server) http.HandlerFunc {
 				info.weight = 1.0
 			}
 			mr := messageResponse{
-				ID:            m.DiscordMessageID,
-				AuthorID:      m.DiscordAuthorID,
-				AuthorName:    m.AuthorDisplayName,
-				Content:       m.Content,
-				Timestamp:     m.SentAt.Time.Format(time.RFC3339),
-				ReactionCount: m.ReactionCount,
-				ReplyCount:    m.ReplyCount,
-				ChannelName:   info.name,
-				ChannelWeight: info.weight,
+				ID:               m.DiscordMessageID,
+				AuthorID:         m.DiscordAuthorID,
+				AuthorName:       m.AuthorDisplayName,
+				Content:          m.Content,
+				Timestamp:        m.SentAt.Time.Format(time.RFC3339),
+				ReactionCount:    m.ReactionCount,
+				ReplyCount:       m.ReplyCount,
+				ChannelName:      info.name,
+				ChannelWeight:    info.weight,
+				DiscordChannelID: info.discordID,
 			}
 			if m.ReplyToDiscordID.Valid {
 				mr.ReplyToID = m.ReplyToDiscordID.String

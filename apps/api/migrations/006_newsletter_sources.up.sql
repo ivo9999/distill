@@ -1,0 +1,34 @@
+-- Source-message map per newsletter section.
+--
+-- The pipeline parses Pass2's <!-- story:slug --> markers and joins
+-- each section back to its Pass1 story + key messages. We persist the
+-- whole map as JSONB so the editor can show "view sources" per
+-- section without re-running generation or fetching from the messages
+-- table at draft-load time.
+--
+-- Shape (one element per section that survived Pass2):
+--   [
+--     {
+--       "story_id": "discord-rate-limits-debate",
+--       "type": "debate",
+--       "title": "Members debate Discord rate limits",
+--       "why_it_matters": "...",
+--       "messages": [
+--         {
+--           "id": "<discord message id>",
+--           "author_name": "...",
+--           "content": "...",
+--           "timestamp": "...",
+--           "channel_name": "general",
+--           "discord_channel_id": "..."
+--         }
+--       ]
+--     }
+--   ]
+--
+-- Stored as a TEXT-shaped JSONB rather than a separate table because:
+--   - the map is read+written together, never partially.
+--   - it's already a 1-to-many list, splitting buys nothing.
+--   - we never need to query "which newsletters cite this message."
+ALTER TABLE newsletters
+    ADD COLUMN sources JSONB NOT NULL DEFAULT '[]'::jsonb;

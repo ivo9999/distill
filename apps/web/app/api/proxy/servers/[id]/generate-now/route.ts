@@ -75,6 +75,7 @@ export async function POST(
     threadId: m.thread_id || undefined,
     channelName: m.channel_name,
     channelWeight: typeof m.channel_weight === "number" ? m.channel_weight : 1.0,
+    discordChannelId: m.discord_channel_id,
   }));
 
   // 5. Run the AI pipeline.
@@ -161,6 +162,9 @@ export async function POST(
       pass2_tokens_in: result.pass2TokensIn,
       pass2_tokens_out: result.pass2TokensOut,
       is_on_demand: true,
+      // Forward the per-section source map so the editor can show
+      // readers "which Discord messages this section came from."
+      sources: result.sources,
     }),
   });
 

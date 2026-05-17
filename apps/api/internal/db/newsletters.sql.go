@@ -43,9 +43,9 @@ const createNewsletter = `-- name: CreateNewsletter :one
 INSERT INTO newsletters (
     server_id, period_start, period_end, status, draft_markdown,
     cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out,
-    error_message, is_on_demand
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand
+    error_message, is_on_demand, sources
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+RETURNING id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand, sources
 `
 
 type CreateNewsletterParams struct {
@@ -61,6 +61,7 @@ type CreateNewsletterParams struct {
 	Pass2TokensOut int32              `json:"pass2_tokens_out"`
 	ErrorMessage   pgtype.Text        `json:"error_message"`
 	IsOnDemand     bool               `json:"is_on_demand"`
+	Sources        []byte             `json:"sources"`
 }
 
 func (q *Queries) CreateNewsletter(ctx context.Context, arg CreateNewsletterParams) (Newsletter, error) {
@@ -77,6 +78,7 @@ func (q *Queries) CreateNewsletter(ctx context.Context, arg CreateNewsletterPara
 		arg.Pass2TokensOut,
 		arg.ErrorMessage,
 		arg.IsOnDemand,
+		arg.Sources,
 	)
 	var i Newsletter
 	err := row.Scan(
@@ -98,12 +100,13 @@ func (q *Queries) CreateNewsletter(ctx context.Context, arg CreateNewsletterPara
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsOnDemand,
+		&i.Sources,
 	)
 	return i, err
 }
 
 const getLatestNewsletterByServerID = `-- name: GetLatestNewsletterByServerID :one
-SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand FROM newsletters WHERE server_id = $1 ORDER BY created_at DESC LIMIT 1
+SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand, sources FROM newsletters WHERE server_id = $1 ORDER BY created_at DESC LIMIT 1
 `
 
 func (q *Queries) GetLatestNewsletterByServerID(ctx context.Context, serverID pgtype.UUID) (Newsletter, error) {
@@ -128,12 +131,13 @@ func (q *Queries) GetLatestNewsletterByServerID(ctx context.Context, serverID pg
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsOnDemand,
+		&i.Sources,
 	)
 	return i, err
 }
 
 const getNewsletterByID = `-- name: GetNewsletterByID :one
-SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand FROM newsletters WHERE id = $1
+SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand, sources FROM newsletters WHERE id = $1
 `
 
 func (q *Queries) GetNewsletterByID(ctx context.Context, id pgtype.UUID) (Newsletter, error) {
@@ -158,12 +162,13 @@ func (q *Queries) GetNewsletterByID(ctx context.Context, id pgtype.UUID) (Newsle
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsOnDemand,
+		&i.Sources,
 	)
 	return i, err
 }
 
 const listNewslettersByServerID = `-- name: ListNewslettersByServerID :many
-SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand FROM newsletters WHERE server_id = $1 ORDER BY created_at DESC
+SELECT id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand, sources FROM newsletters WHERE server_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListNewslettersByServerID(ctx context.Context, serverID pgtype.UUID) ([]Newsletter, error) {
@@ -194,6 +199,7 @@ func (q *Queries) ListNewslettersByServerID(ctx context.Context, serverID pgtype
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.IsOnDemand,
+			&i.Sources,
 		); err != nil {
 			return nil, err
 		}
@@ -206,7 +212,7 @@ func (q *Queries) ListNewslettersByServerID(ctx context.Context, serverID pgtype
 }
 
 const updateNewsletterMarkdown = `-- name: UpdateNewsletterMarkdown :one
-UPDATE newsletters SET edited_markdown = $2, updated_at = NOW() WHERE id = $1 RETURNING id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand
+UPDATE newsletters SET edited_markdown = $2, updated_at = NOW() WHERE id = $1 RETURNING id, server_id, period_start, period_end, status, draft_markdown, edited_markdown, published_at, published_url, cost_usd, pass1_tokens_in, pass1_tokens_out, pass2_tokens_in, pass2_tokens_out, error_message, created_at, updated_at, is_on_demand, sources
 `
 
 type UpdateNewsletterMarkdownParams struct {
@@ -236,6 +242,7 @@ func (q *Queries) UpdateNewsletterMarkdown(ctx context.Context, arg UpdateNewsle
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsOnDemand,
+		&i.Sources,
 	)
 	return i, err
 }

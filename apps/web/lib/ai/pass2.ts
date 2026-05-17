@@ -11,9 +11,13 @@ VOICE: Conversational, warm, slightly nerdy. Address the reader as "you." First-
 STRUCTURE:
 1. A 1–2 sentence hook at the top that captures the energy of the week. No heading on the hook.
 2. One section per story (## level heading + 80–150 words of body). If you got 1 story, write 1 section. If you got 5, write 5. Do not invent extra sections to hit a count.
-3. Each section paraphrases the conversation in your own words. Members are anonymized as "one member", "a regular", "someone in #general", unless I tell you to attribute.
-4. Include direct links where members shared resources (use markdown link syntax).
-5. Close with a single italic line: *What to watch next week: ...*
+3. IMPORTANT — IMMEDIATELY BEFORE each ## heading, emit an HTML comment with the story_id you're writing about, like this:
+   <!-- story:story_id_here -->
+   ## Heading
+   These markers are stripped in the rendered email but let the dashboard show readers which Discord messages each section came from. Use exactly one marker per section, referencing the story_id from the input. Never invent story_ids; never share a marker between sections.
+4. Each section paraphrases the conversation in your own words. Members are anonymized as "one member", "a regular", "someone in #general", unless I tell you to attribute.
+5. Include direct links where members shared resources (use markdown link syntax).
+6. Close with a single italic line: *What to watch next week: ...*
 
 HARD RULES:
 - Never invent facts, opinions, or quotes that weren't in the source messages.
@@ -50,12 +54,29 @@ export async function runPass2(
       ? `VOICE ANCHOR — the operator pasted this past newsletter as a tone example. Match its rhythm, sentence length, idiom, and warmth. Do NOT copy phrases or specific facts; only the voice. If it conflicts with the VOICE rules below, the anchor wins on tone but the hard rules below still apply.\n\n<example>\n${voiceSample.slice(0, 5000)}\n</example>`
       : "";
 
+  // Strip fields the drafter doesn't need (discordChannelId is for
+  // the editor's permalink-builder only; weighted_signal /
+  // channelWeight are internal ranking inputs the drafter would just
+  // pattern-match into the output if shown).
+  const storiesForPrompt = stories.map((s) => {
+    const messages = s.messages.map(({ discordChannelId: _u1, channelWeight: _u2, ...rest }) => rest);
+    return {
+      story_id: s.story_id,
+      type: s.type,
+      title: s.title,
+      why_it_matters: s.why_it_matters,
+      key_message_ids: s.key_message_ids,
+      verbatim_snippets: s.verbatim_snippets,
+      messages,
+    };
+  });
+
   const prompt = PASS2_PROMPT
     .replace("{{COMMUNITY_NAME}}", communityName)
     .replace("{{VOICE_ANCHOR}}", voiceAnchor)
     .replace(
       "{{TOP_STORIES_WITH_MESSAGES}}",
-      JSON.stringify(stories, null, 2)
+      JSON.stringify(storiesForPrompt, null, 2)
     );
 
   const result = await generateText({

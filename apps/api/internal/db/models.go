@@ -53,6 +53,7 @@ type Newsletter struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	IsOnDemand     bool               `json:"is_on_demand"`
+	Sources        []byte             `json:"sources"`
 }
 
 type Optout struct {

@@ -74,15 +74,24 @@ export interface Message {
   // also surfaces it as a soft hint so the model gets a chance to
   // prefer stronger channels at selection time too.
   channelWeight?: number;
+  // Discord channel ID — needed so the dashboard can build per-message
+  // permalinks of the form discord.com/channels/<guild>/<channel>/<id>.
+  // Not part of the model prompt (we strip it for token efficiency);
+  // the pipeline carries it through for the source-map only.
+  discordChannelId?: string;
 }
 
 export async function runPass1(
   messages: Message[],
   communityType: string
 ): Promise<{ output: Pass1Output; tokensIn: number; tokensOut: number }> {
+  // Strip fields the model doesn't need (discordChannelId is carried
+  // through only for the editor's permalink-builder). Saves ~30
+  // tokens/message on long weeks without any loss of signal.
+  const messagesForPrompt = messages.map(({ discordChannelId: _unused, ...rest }) => rest);
   const prompt = PASS1_PROMPT
     .replace("{{COMMUNITY_TYPE}}", communityType)
-    .replace("{{MESSAGES_JSON}}", JSON.stringify(messages, null, 2));
+    .replace("{{MESSAGES_JSON}}", JSON.stringify(messagesForPrompt, null, 2));
 
   const result = await generateObject({
     model: google(process.env.AI_MODEL_PASS1 ?? "gemini-2.5-flash"),

@@ -54,6 +54,11 @@ type Message struct {
 	// experiment script and any legacy caller can omit it; the pipeline
 	// defaults missing values to 1.0.
 	ChannelWeight float64 `json:"channelWeight,omitempty"`
+	// Discord channel ID — needed so the editor can build per-message
+	// permalinks of the form discord.com/channels/<guild>/<channel>/<id>.
+	// Empty on the experiment script path; the pipeline degrades
+	// gracefully (no permalink shown for that message).
+	DiscordChannelID string `json:"discordChannelId,omitempty"`
 }
 
 // GenerateResponse is the response from /api/internal/generate.
@@ -64,6 +69,10 @@ type GenerateResponse struct {
 	Pass1TokensOut int     `json:"pass1TokensOut"`
 	Pass2TokensIn  int     `json:"pass2TokensIn"`
 	Pass2TokensOut int     `json:"pass2TokensOut"`
+	// Per-section source map (see pipeline.ts SourceSection). Carried
+	// through as raw JSON since the Go side never reads the shape —
+	// it just stores it in the newsletters.sources JSONB column.
+	Sources json.RawMessage `json:"sources,omitempty"`
 }
 
 // Generate calls the Next.js LLM pipeline endpoint.

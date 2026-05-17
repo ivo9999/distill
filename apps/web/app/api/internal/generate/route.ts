@@ -19,6 +19,7 @@ const RequestSchema = z.object({
       threadId: z.string().optional(),
       channelName: z.string().optional(),
       channelWeight: z.number().optional(),
+      discordChannelId: z.string().optional(),
     })
   ),
 });

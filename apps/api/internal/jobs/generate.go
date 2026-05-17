@@ -79,35 +79,40 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 	// per-channel weight into the pipeline. Defaulting to 1.0 keeps
 	// historical behavior for unweighted channels and rows.
 	channels, _ := w.Queries.ListMonitoredChannels(ctx, serverID)
-	weightByChannelID := make(map[pgtype.UUID]float64, len(channels))
+	type chInfo struct {
+		weight    float64
+		discordID string
+	}
+	channelInfoByID := make(map[pgtype.UUID]chInfo, len(channels))
 	for _, ch := range channels {
-		w := 1.0
+		weight := 1.0
 		if ch.Weight.Valid {
 			if f, err := ch.Weight.Float64Value(); err == nil && f.Valid {
-				w = f.Float64
+				weight = f.Float64
 			}
 		}
-		weightByChannelID[ch.ID] = w
+		channelInfoByID[ch.ID] = chInfo{weight: weight, discordID: ch.DiscordChannelID}
 	}
 
 	// Convert db messages to llmclient messages.
 	llmMsgs := make([]llmclient.Message, 0, len(messages))
 	for _, m := range messages {
-		weight, ok := weightByChannelID[m.ChannelID]
+		info, ok := channelInfoByID[m.ChannelID]
 		if !ok {
-			weight = 1.0
+			info = chInfo{weight: 1.0}
 		}
 		llmMsgs = append(llmMsgs, llmclient.Message{
-			ID:            m.DiscordMessageID,
-			AuthorID:      m.DiscordAuthorID,
-			AuthorName:    m.AuthorDisplayName,
-			Content:       m.Content,
-			Timestamp:     m.SentAt.Time.Format(time.RFC3339),
-			ReactionCount: int(m.ReactionCount),
-			ReplyCount:    int(m.ReplyCount),
-			ReplyToID:     m.ReplyToDiscordID.String,
-			ThreadID:      m.ThreadDiscordID.String,
-			ChannelWeight: weight,
+			ID:               m.DiscordMessageID,
+			AuthorID:         m.DiscordAuthorID,
+			AuthorName:       m.AuthorDisplayName,
+			Content:          m.Content,
+			Timestamp:        m.SentAt.Time.Format(time.RFC3339),
+			ReactionCount:    int(m.ReactionCount),
+			ReplyCount:       int(m.ReplyCount),
+			ReplyToID:        m.ReplyToDiscordID.String,
+			ThreadID:         m.ThreadDiscordID.String,
+			ChannelWeight:    info.weight,
+			DiscordChannelID: info.discordID,
 		})
 	}
 
@@ -144,6 +149,7 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 			Pass2TokensIn:  0,
 			Pass2TokensOut: 0,
 			ErrorMessage:   pgtype.Text{String: errMsg, Valid: true},
+			Sources:        []byte("[]"),
 		})
 		if createErr != nil {
 			slog.Error("failed to save error newsletter", "err", createErr)
@@ -153,6 +159,11 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 
 	var costNum pgtype.Numeric
 	_ = costNum.Scan(fmt.Sprintf("%f", resp.CostUsd))
+
+	sources := []byte("[]")
+	if len(resp.Sources) > 0 {
+		sources = resp.Sources
+	}
 
 	nl, err := w.Queries.CreateNewsletter(ctx, db.CreateNewsletterParams{
 		ServerID:       serverID,
@@ -166,6 +177,7 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 		Pass2TokensIn:  int32(resp.Pass2TokensIn),
 		Pass2TokensOut: int32(resp.Pass2TokensOut),
 		ErrorMessage:   pgtype.Text{Valid: false},
+		Sources:        sources,
 	})
 	if err != nil {
 		return fmt.Errorf("saving newsletter: %w", err)

@@ -37,6 +37,33 @@ export interface PipelineOutput {
   pass1TokensOut: number;
   pass2TokensIn: number;
   pass2TokensOut: number;
+  // Per-section source map. Each entry corresponds to one Pass2
+  // section identified by its <!-- story:slug --> marker; the editor
+  // uses this to show readers the Discord messages each section was
+  // built from, which is the single most effective trust signal for
+  // AI-written content ("the model didn't make this up — here's the
+  // thread"). Stories that Pass2 dropped don't appear here, so this
+  // list is a subset of Pass1's top-8.
+  sources: SourceSection[];
+}
+
+export interface SourceSection {
+  storyId: string;
+  type: string;
+  title: string;
+  whyItMatters: string;
+  // Discord-side IDs so the dashboard can build permalinks of the
+  // form https://discord.com/channels/<guild>/<channel>/<message>.
+  // We include the message body too so a non-admin reading the
+  // dashboard sees the source content without leaving the page.
+  messages: Array<{
+    id: string;
+    authorName: string;
+    content: string;
+    timestamp: string;
+    channelName?: string;
+    discordChannelId?: string;
+  }>;
 }
 
 export async function runPipeline(
@@ -89,6 +116,40 @@ export async function runPipeline(
     calculateCost(model1, pass1.tokensIn, pass1.tokensOut) +
     calculateCost(model2, pass2.tokensIn, pass2.tokensOut);
 
+  // Build the source-map: walk Pass2's markdown for the per-section
+  // story markers in order, and join each one back to its Pass1
+  // story + source messages. Sections Pass2 dropped (the editor cut
+  // a thin story) don't appear; markers referencing unknown story_ids
+  // are skipped silently — the only consequence is that section has
+  // no "view sources" affordance, which beats throwing the whole
+  // generation away over a model formatting hiccup.
+  const storyById = new Map(storiesWithMessages.map((s) => [s.story_id, s]));
+  const markerRegex = /<!--\s*story:([A-Za-z0-9_-]+)\s*-->/g;
+  const sources: SourceSection[] = [];
+  const seenInOutput = new Set<string>();
+  let match: RegExpExecArray | null;
+  while ((match = markerRegex.exec(pass2.markdown)) !== null) {
+    const id = match[1].trim();
+    if (seenInOutput.has(id)) continue;
+    seenInOutput.add(id);
+    const story = storyById.get(id);
+    if (!story) continue;
+    sources.push({
+      storyId: story.story_id,
+      type: story.type,
+      title: story.title,
+      whyItMatters: story.why_it_matters,
+      messages: story.messages.map((m) => ({
+        id: m.id,
+        authorName: m.authorName,
+        content: m.content,
+        timestamp: m.timestamp,
+        channelName: m.channelName,
+        discordChannelId: m.discordChannelId,
+      })),
+    });
+  }
+
   return {
     markdown: pass2.markdown,
     costUsd,
@@ -96,6 +157,7 @@ export async function runPipeline(
     pass1TokensOut: pass1.tokensOut,
     pass2TokensIn: pass2.tokensIn,
     pass2TokensOut: pass2.tokensOut,
+    sources,
   };
 }
 
