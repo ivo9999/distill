@@ -27,3 +27,6 @@ WHERE subscription_status = 'trialing'
 
 -- name: GetUserByStripeCustomerID :one
 SELECT * FROM users WHERE stripe_customer_id = $1;
+
+-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1;

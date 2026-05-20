@@ -49,6 +49,7 @@ func NewRouter(s *Server) http.Handler {
 
 		// Users
 		r.Get("/api/me", getMe(s))
+		r.Delete("/api/me", deleteMe(s))
 
 		// Servers
 		r.Get("/api/servers", listServers(s))

@@ -4,6 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { PageHeader } from "@/components/features/page-header";
 import { SettingsCard } from "@/components/features/settings-card";
 
@@ -60,6 +70,30 @@ export function ProfileClient({ name, email, avatar, subscriptionStatus }: Profi
       window.location.href = data.url;
     }
     setLoadingCheckout(false);
+  };
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/proxy/me", { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.deleted) {
+        // Account is gone — drop the session and leave.
+        setDeleteOpen(false);
+        window.location.href = "/api/auth/signout";
+        return;
+      }
+      setDeleteError(data.error || "Failed to delete account. Please try again.");
+    } catch {
+      setDeleteError("Couldn't reach the server. Please try again.");
+    }
+    setDeleting(false);
   };
 
   const isActive = subscriptionStatus === "active";
@@ -160,18 +194,86 @@ export function ProfileClient({ name, email, avatar, subscriptionStatus }: Profi
       </SettingsCard>
 
       <SettingsCard title="Danger Zone">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">Sign out</p>
-            <p className="text-xs text-ink-medium">Sign out of your Distill account</p>
+        <div className="divide-y divide-ink-lighter">
+          <div className="flex items-center justify-between pb-3">
+            <div>
+              <p className="text-sm font-medium">Sign out</p>
+              <p className="text-xs text-ink-medium">Sign out of your Distill account</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { window.location.href = "/api/auth/signout"; }}
+            >
+              Sign out
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { window.location.href = "/api/auth/signout"; }}
-          >
-            Sign out
-          </Button>
+
+          <div className="flex items-center justify-between pt-3">
+            <div>
+              <p className="text-sm font-medium text-negative">Delete account</p>
+              <p className="text-xs text-ink-medium">
+                Permanently delete your account, servers, and newsletters. This
+                cannot be undone.
+              </p>
+            </div>
+            <Dialog
+              open={deleteOpen}
+              onOpenChange={(open) => {
+                setDeleteOpen(open);
+                if (!open) {
+                  setDeleteConfirm("");
+                  setDeleteError(null);
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  Delete account
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete your account?</DialogTitle>
+                  <DialogDescription>
+                    This permanently deletes your account and every connected
+                    Discord server, channel, and newsletter draft. Any active
+                    subscription is cancelled. This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <p className="text-sm text-ink-medium">
+                    Type <span className="font-mono font-bold text-ink">delete</span> to confirm.
+                  </p>
+                  <Input
+                    value={deleteConfirm}
+                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                    placeholder="delete"
+                    autoComplete="off"
+                  />
+                  {deleteError && (
+                    <p className="text-xs text-negative">{deleteError}</p>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteOpen(false)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteAccount}
+                    disabled={deleting || deleteConfirm !== "delete"}
+                  >
+                    {deleting ? "Deleting..." : "Delete account"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </SettingsCard>
     </div>

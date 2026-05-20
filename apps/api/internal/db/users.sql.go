@@ -11,6 +11,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
+	return err
+}
+
 const getTrialExpiringUsers = `-- name: GetTrialExpiringUsers :many
 SELECT id, discord_id, discord_username, email, avatar_url, stripe_customer_id, subscription_status, trial_ends_at, created_at, updated_at FROM users
 WHERE subscription_status = 'trialing'

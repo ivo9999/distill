@@ -6,3 +6,9 @@ export async function GET() {
   const data = await resp.json();
   return NextResponse.json(data, { status: resp.status });
 }
+
+export async function DELETE() {
+  const resp = await goFetch("/api/me", { method: "DELETE" });
+  const data = await resp.json();
+  return NextResponse.json(data, { status: resp.status });
+}
