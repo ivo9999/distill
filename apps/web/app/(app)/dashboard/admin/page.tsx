@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/features/page-header";
 
 interface UserStats {
   total_users: number;
@@ -91,13 +92,13 @@ function StatCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-ink-dark">
+        <CardTitle className="text-sm font-medium text-ink-medium">
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {sub && <p className="text-xs text-ink-dark mt-1">{sub}</p>}
+        <div className="text-2xl font-bold tracking-tight">{value}</div>
+        {sub && <p className="text-xs text-ink-medium mt-1">{sub}</p>}
       </CardContent>
     </Card>
   );
@@ -162,12 +163,18 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+      <PageHeader
+        eyebrow="Admin"
+        title="Dashboard"
+        description="Platform-wide metrics, cost tracking, and recent activity."
+      />
 
       {/* KPI Cards */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Overview</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-medium mb-3">
+          Overview
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total Users"
             value={users.total_users}
@@ -193,8 +200,10 @@ export default function AdminPage() {
 
       {/* Detailed Stats */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Breakdown</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-medium mb-3">
+          Breakdown
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Active Servers"
             value={servers.active_servers}
@@ -221,13 +230,15 @@ export default function AdminPage() {
       {/* Cost by Day */}
       {data.cost_by_day.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold mb-3">Cost (Last 30 Days)</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-medium mb-3">
+            Cost — Last 30 Days
+          </h2>
           <Card>
             <CardContent className="pt-6">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b text-left text-ink-dark">
+                    <tr className="border-b text-left text-ink-medium">
                       <th className="pb-2 font-medium">Date</th>
                       <th className="pb-2 font-medium text-right">
                         Newsletters
@@ -257,13 +268,15 @@ export default function AdminPage() {
 
       {/* Recent Users */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Recent Users</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-medium mb-3">
+          Recent Users
+        </h2>
         <Card>
           <CardContent className="pt-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-ink-dark">
+                  <tr className="border-b text-left text-ink-medium">
                     <th className="pb-2 font-medium">User</th>
                     <th className="pb-2 font-medium">Email</th>
                     <th className="pb-2 font-medium">Status</th>
@@ -280,7 +293,7 @@ export default function AdminPage() {
                       <td className="py-2 font-medium">
                         {u.discord_username}
                       </td>
-                      <td className="py-2 text-ink-dark">{u.email}</td>
+                      <td className="py-2 text-ink-medium">{u.email}</td>
                       <td className="py-2">
                         <Badge variant={statusColor(u.subscription_status)}>
                           {u.subscription_status}
@@ -290,7 +303,7 @@ export default function AdminPage() {
                       <td className="py-2 text-right">
                         {u.newsletter_count}
                       </td>
-                      <td className="py-2 text-ink-dark">
+                      <td className="py-2 text-ink-medium">
                         {formatDate(u.created_at)}
                       </td>
                     </tr>
@@ -304,13 +317,15 @@ export default function AdminPage() {
 
       {/* Recent Newsletters */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Recent Newsletters</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-medium mb-3">
+          Recent Newsletters
+        </h2>
         <Card>
           <CardContent className="pt-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-ink-dark">
+                  <tr className="border-b text-left text-ink-medium">
                     <th className="pb-2 font-medium">Server</th>
                     <th className="pb-2 font-medium">User</th>
                     <th className="pb-2 font-medium">Status</th>
@@ -324,7 +339,7 @@ export default function AdminPage() {
                   {data.recent_newsletters.map((n) => (
                     <tr key={n.id} className="border-b last:border-0">
                       <td className="py-2 font-medium">{n.server_name}</td>
-                      <td className="py-2 text-ink-dark">
+                      <td className="py-2 text-ink-medium">
                         {n.discord_username}
                       </td>
                       <td className="py-2">
@@ -332,7 +347,7 @@ export default function AdminPage() {
                           {n.status}
                         </Badge>
                       </td>
-                      <td className="py-2">
+                      <td className="py-2 text-ink-medium">
                         {n.is_on_demand ? "on-demand" : "scheduled"}
                       </td>
                       <td className="py-2 text-right font-mono">
@@ -346,7 +361,7 @@ export default function AdminPage() {
                           n.pass2_tokens_out
                         ).toLocaleString()}
                       </td>
-                      <td className="py-2 text-ink-dark">
+                      <td className="py-2 text-ink-medium">
                         {formatDate(n.created_at)}
                       </td>
                     </tr>

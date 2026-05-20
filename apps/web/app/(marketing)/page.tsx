@@ -63,7 +63,7 @@ function Nav() {
   return (
     <nav className="sticky top-0 z-50 border-b border-ink-lighter/60 bg-canvas/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2 text-base font-semibold tracking-tight">
+        <Link href="/" className="flex items-center gap-2 text-base font-black tracking-tight">
           <BrandMark className="h-5 w-auto" />
           distill
         </Link>
@@ -76,7 +76,7 @@ function Nav() {
             <a
               key={l.href}
               href={l.href}
-              className="text-sm font-medium text-ink-dark hover:text-ink"
+              className="text-sm font-medium text-ink-medium hover:text-ink"
             >
               {l.label}
             </a>
@@ -103,39 +103,36 @@ function Nav() {
 /* ---- Hero ---- */
 function Hero() {
   return (
-    <section className="px-4 pt-16 pb-16 sm:px-6 md:pt-24 md:pb-24">
+    <section className="px-4 pt-20 pb-20 sm:px-6 md:pt-32 md:pb-32">
       <div className="mx-auto w-full max-w-[1100px]">
         <SectionLabel>{"// for community owners who haven't sent the email"}</SectionLabel>
 
         <div className="mt-6 grid items-start gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
           {/* Left — the pitch */}
           <div>
-            <h1 className="text-[clamp(40px,5.6vw,68px)] font-extrabold leading-[1.04] tracking-tight">
+            <h1 className="text-[clamp(40px,5.6vw,68px)] font-black leading-[1.04] tracking-tight">
               Your list is waiting.
               <br />
-              <span className="text-ink-dark">Your community already wrote the email.</span>
+              <span className="text-ink-medium">Your community already wrote the email.</span>
             </h1>
 
-            <p className="mt-7 max-w-[540px] text-[17px] leading-relaxed text-ink-dark sm:text-[19px]">
+            <p className="mt-7 max-w-[540px] text-[17px] leading-relaxed text-ink-medium sm:text-[19px]">
               You haven&apos;t emailed your list in weeks. Not because nothing&apos;s happening
               — your Discord is on fire. Because you can&apos;t bring yourself to sit down
               and write it up. Distill writes it up. You spend ten minutes making it
               yours, and ship.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
               <form action={signInWithDiscord}>
-                <Button variant="primary" size="lg" className="h-[52px] px-7 text-base">
+                <Button variant="primary" size="lg" className="h-[52px] px-8 text-base">
                   Get your first draft free
                   <ArrowRight className="ml-1.5 size-4" />
                 </Button>
               </form>
-              <a
-                href="#how"
-                className="inline-flex h-[52px] items-center justify-center rounded-pill border border-ink-lighter bg-canvas px-6 text-sm font-medium text-ink hover:bg-ink-lightest"
-              >
-                See an example draft
-              </a>
+              <Button variant="outline" size="lg" className="h-[52px] px-6 text-base" asChild>
+                <a href="#how">See an example draft</a>
+              </Button>
             </div>
 
             <p className="mt-5 max-w-[460px] text-[13px] text-ink-medium">
@@ -156,7 +153,7 @@ function Hero() {
 function DraftArtifact() {
   return (
     <div className="relative">
-      <div className="overflow-hidden rounded-xl border border-ink-lighter bg-canvas shadow-card">
+      <div className="overflow-hidden rounded-card border border-ink-lighter bg-canvas shadow-card transition-shadow duration-200 hover:shadow-card">
         {/* Title bar */}
         <div className="flex items-center gap-2 border-b border-ink-lighter px-4 py-2.5 bg-ink-lightest/60">
           <span className="size-2.5 rounded-full bg-ink-light" />
@@ -169,33 +166,33 @@ function DraftArtifact() {
 
         {/* The draft itself */}
         <div className="space-y-4 px-5 py-6 font-mono text-[12.5px] leading-[1.75] text-ink">
-          <p className="text-ink-dark">
+          <p className="text-ink">
             <span className="text-brand">#</span> Week of May 12
           </p>
 
-          <p>
+          <p className="text-ink-medium">
             Quiet week on the surface, loud one underneath. Six people argued about
             Stripe webhook reliability for three days, someone shipped a CLI tool
             that picked up 200 stars overnight, and a regular posted the kind of
             late-night message you screenshot and keep.
           </p>
 
-          <p className="text-ink-dark">
+          <p className="text-ink">
             <span className="text-brand">##</span> The Stripe webhook thing
           </p>
 
-          <p className="text-ink-dark">
+          <p className="text-ink-medium">
             It started with one question in #backend. By the third day, the thread
             had a 90-line code sample and a small consensus: idempotency keys per
             event, not per request. The folks who disagreed had good reasons.
             Worth reading the whole thing if you ever take money.
           </p>
 
-          <p className="text-ink-dark">
+          <p className="text-ink">
             <span className="text-brand">##</span> 200 stars in 11 hours
           </p>
 
-          <p className="text-ink-dark">
+          <p className="text-ink-medium">
             One link in #show-work. By morning a member&apos;s side project was at
             the top of Hacker News and they were getting their first contributor
             PRs. We&apos;ve linked the repo below.
@@ -240,17 +237,17 @@ function Pain() {
   ];
 
   return (
-    <section className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+    <section className="border-t border-ink-lighter/60 px-4 py-24 sm:px-6 md:py-32">
       <div className="mx-auto max-w-[920px]">
         <SectionLabel>{"// the actual problem"}</SectionLabel>
 
-        <h2 className="mt-6 text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+        <h2 className="mt-6 text-[clamp(28px,4.2vw,48px)] font-black leading-[1.1] tracking-tight">
           You didn&apos;t run out of subscribers.
           <br />
           You ran out of <span className="underline decoration-brand decoration-[3px] underline-offset-[6px]">Sundays.</span>
         </h2>
 
-        <p className="mt-7 max-w-[640px] text-[17px] leading-relaxed text-ink-dark sm:text-[19px]">
+        <p className="mt-7 max-w-[640px] text-[17px] leading-relaxed text-ink-medium sm:text-[19px]">
           The community is the easy part. The community is doing fine. You opened the
           editor again last weekend. Here&apos;s how that went:
         </p>
@@ -261,7 +258,7 @@ function Pain() {
               key={i}
               className={cn(
                 "text-[15px] leading-relaxed sm:text-[17px]",
-                i === internalMonologue.length - 1 ? "text-ink" : "text-ink-dark",
+                i === internalMonologue.length - 1 ? "text-ink font-semibold" : "text-ink-medium",
               )}
             >
               {line}
@@ -274,7 +271,7 @@ function Pain() {
             <span className="text-brand-hot">11</span>
             <span className="text-ink-medium"> weeks</span>
           </p>
-          <p className="text-[15px] leading-relaxed text-ink-dark sm:text-[17px]">
+          <p className="text-[15px] leading-relaxed text-ink-medium sm:text-[17px]">
             since your last email. Open rates are about to fall off a cliff —
             that&apos;s the part of the inbox where Gmail starts deciding you might be
             spam. The longer you wait, the more it costs to come back.
@@ -315,11 +312,11 @@ function HowItWorks() {
   ];
 
   return (
-    <section id="how" className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+    <section id="how" className="border-t border-ink-lighter/60 px-4 py-24 sm:px-6 md:py-32">
       <div className="mx-auto max-w-[1100px]">
         <SectionLabel>{"// how it works"}</SectionLabel>
 
-        <h2 className="mt-6 max-w-[820px] text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+        <h2 className="mt-6 max-w-[820px] text-[clamp(28px,4.2vw,48px)] font-black leading-[1.1] tracking-tight">
           Three steps. None of them is &quot;sit down and write a newsletter.&quot;
         </h2>
 
@@ -327,7 +324,7 @@ function HowItWorks() {
           {steps.map((s) => (
             <div
               key={s.n}
-              className="relative overflow-hidden rounded-xl border border-ink-lighter bg-canvas p-7 shadow-card"
+              className="group relative overflow-hidden rounded-card border border-ink-lighter bg-canvas p-7 shadow-card transition-shadow duration-200 hover:shadow-card"
             >
               <span
                 aria-hidden
@@ -336,8 +333,8 @@ function HowItWorks() {
               <span className="font-mono text-[13px] tracking-wider text-ink-medium">
                 {s.n}
               </span>
-              <h3 className="mt-3 text-[18px] font-bold leading-tight">{s.title}</h3>
-              <p className="mt-3 text-[14px] leading-relaxed text-ink-dark">{s.desc}</p>
+              <h3 className="mt-3 text-[18px] font-black leading-tight tracking-tight">{s.title}</h3>
+              <p className="mt-3 text-[14px] leading-relaxed text-ink-medium">{s.desc}</p>
             </div>
           ))}
         </div>
@@ -376,11 +373,11 @@ function Features() {
   ];
 
   return (
-    <section className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+    <section className="border-t border-ink-lighter/60 px-4 py-24 sm:px-6 md:py-32">
       <div className="mx-auto max-w-[1100px]">
         <SectionLabel>{"// what you actually get"}</SectionLabel>
 
-        <h2 className="mt-6 max-w-[760px] text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+        <h2 className="mt-6 max-w-[760px] text-[clamp(28px,4.2vw,48px)] font-black leading-[1.1] tracking-tight">
           A first draft so good you only have to be the editor.
         </h2>
 
@@ -388,7 +385,7 @@ function Features() {
           {features.map((f) => (
             <div
               key={f.title}
-              className="flex flex-col gap-4 rounded-xl border border-ink-lighter bg-canvas p-7 shadow-card"
+              className="flex flex-col gap-4 rounded-card border border-ink-lighter bg-canvas p-7 shadow-card transition-shadow duration-200 hover:shadow-card"
             >
               <div className="flex items-baseline justify-between gap-4">
                 <span className="font-mono text-[18px] font-bold tabular-nums text-brand">
@@ -398,8 +395,8 @@ function Features() {
                   {f.statLabel}
                 </span>
               </div>
-              <h3 className="text-[18px] font-bold leading-tight">{f.title}</h3>
-              <p className="text-[14px] leading-relaxed text-ink-dark">{f.desc}</p>
+              <h3 className="text-[18px] font-black leading-tight tracking-tight">{f.title}</h3>
+              <p className="text-[14px] leading-relaxed text-ink-medium">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -411,30 +408,30 @@ function Features() {
 /* ---- Why not DIY ---- */
 function WhyNotDIY() {
   return (
-    <section className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+    <section className="border-t border-ink-lighter/60 px-4 py-24 sm:px-6 md:py-32">
       <div className="mx-auto max-w-[920px]">
         <SectionLabel>{"// the obvious objection"}</SectionLabel>
 
-        <h2 className="mt-6 max-w-[760px] text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+        <h2 className="mt-6 max-w-[760px] text-[clamp(28px,4.2vw,48px)] font-black leading-[1.1] tracking-tight">
           &quot;I could just write it myself in 30 minutes.&quot;
         </h2>
 
-        <p className="mt-7 max-w-[640px] text-[17px] leading-relaxed text-ink-dark sm:text-[19px]">
+        <p className="mt-7 max-w-[640px] text-[17px] leading-relaxed text-ink-medium sm:text-[19px]">
           You could. You haven&apos;t. That&apos;s the disconnect.
         </p>
 
         <div className="mt-10 grid gap-8 sm:grid-cols-2 sm:gap-10">
-          <div className="border-t border-ink-lighter pt-6">
+          <div className="rounded-card border border-ink-lighter bg-canvas p-6 shadow-card">
             <p className="font-mono text-[12px] uppercase tracking-wider text-ink-medium">
               The fantasy version
             </p>
-            <p className="mt-3 text-[15px] leading-relaxed text-ink-dark">
+            <p className="mt-3 text-[15px] leading-relaxed text-ink-medium">
               Sunday morning, coffee, you scroll the week&apos;s Discord, get inspired,
               write a 600-word email in 30 minutes, hit send by 11. Inbox happy,
               list growing, churn falling.
             </p>
           </div>
-          <div className="border-t border-brand pt-6">
+          <div className="rounded-card border border-brand bg-brand-soft p-6 shadow-card">
             <p className="font-mono text-[12px] uppercase tracking-wider text-brand">
               What actually happens
             </p>
@@ -460,14 +457,14 @@ function WhyNotDIY() {
 /* ---- Pricing ---- */
 function Pricing() {
   return (
-    <section id="pricing" className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+    <section id="pricing" className="border-t border-ink-lighter/60 px-4 py-24 sm:px-6 md:py-32">
       <div className="mx-auto max-w-[1100px]">
         <SectionLabel>{"// pricing"}</SectionLabel>
 
-        <h2 className="mt-6 max-w-[760px] text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+        <h2 className="mt-6 max-w-[760px] text-[clamp(28px,4.2vw,48px)] font-black leading-[1.1] tracking-tight">
           One Sunday saved pays for the year.
         </h2>
-        <p className="mt-5 max-w-[600px] text-[17px] leading-relaxed text-ink-dark">
+        <p className="mt-5 max-w-[600px] text-[17px] leading-relaxed text-ink-medium">
           You can cancel any time. We&apos;ll still keep your drafts if you do.
         </p>
 
@@ -536,7 +533,7 @@ function PricingCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-xl bg-canvas p-8 shadow-card",
+        "relative flex flex-col rounded-card bg-canvas p-8 shadow-card",
         badge ? "border-2 border-brand" : "border border-ink-lighter",
       )}
     >
@@ -545,15 +542,15 @@ function PricingCard({
           {badge}
         </span>
       )}
-      <h3 className="text-[20px] font-bold">{name}</h3>
-      <p className="mt-2 text-[14px] text-ink-dark">{blurb}</p>
+      <h3 className="text-[20px] font-black tracking-tight">{name}</h3>
+      <p className="mt-2 text-[14px] text-ink-medium">{blurb}</p>
       <div className="mt-6 flex items-baseline gap-1">
-        <span className="text-[44px] font-extrabold tabular-nums tracking-tight">{price}</span>
+        <span className="text-[44px] font-black tabular-nums tracking-tight">{price}</span>
         <span className="text-[14px] text-ink-medium">{cadence}</span>
       </div>
       <ul className="mt-6 flex-1 space-y-3">
         {features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5 text-[14px] text-ink-dark">
+          <li key={f} className="flex items-start gap-2.5 text-[14px] text-ink-medium">
             <Check className="mt-0.5 size-4 shrink-0 text-positive" strokeWidth={2.5} />
             <span>{f}</span>
           </li>
@@ -567,31 +564,28 @@ function PricingCard({
 /* ---- Final CTA ---- */
 function FinalCTA() {
   return (
-    <section className="border-t border-ink-lighter/60 px-4 py-20 sm:px-6 md:py-28">
+    <section className="border-t border-ink-lighter/60 px-4 py-24 sm:px-6 md:py-32">
       <div className="mx-auto max-w-[820px]">
-        <h2 className="text-[clamp(28px,4.6vw,52px)] font-bold leading-[1.05] tracking-tight">
+        <h2 className="text-[clamp(28px,4.6vw,52px)] font-black leading-[1.05] tracking-tight">
           Your subscribers are still there.
           <br />
-          <span className="text-ink-dark">They&apos;ve been there the whole time.</span>
+          <span className="text-ink-medium">They&apos;ve been there the whole time.</span>
         </h2>
-        <p className="mt-7 max-w-[600px] text-[17px] leading-relaxed text-ink-dark sm:text-[19px]">
+        <p className="mt-7 max-w-[600px] text-[17px] leading-relaxed text-ink-medium sm:text-[19px]">
           Try one draft. If we don&apos;t nail your community&apos;s voice on the first
           try, you walk away with a free file and nothing else. If we do — well,
           you already know what Sunday morning is going to look like.
         </p>
-        <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
           <form action={signInWithDiscord}>
-            <Button variant="primary" size="lg" className="h-[52px] px-7 text-base">
+            <Button variant="primary" size="lg" className="h-[52px] px-8 text-base">
               Generate your first draft
               <ArrowRight className="ml-1.5 size-4" />
             </Button>
           </form>
-          <a
-            href="#pricing"
-            className="inline-flex h-[52px] items-center justify-center rounded-pill border border-ink-lighter bg-canvas px-6 text-sm font-medium text-ink hover:bg-ink-lightest"
-          >
-            Compare plans
-          </a>
+          <Button variant="outline" size="lg" className="h-[52px] px-6 text-base" asChild>
+            <a href="#pricing">Compare plans</a>
+          </Button>
         </div>
       </div>
     </section>
@@ -603,7 +597,7 @@ function Footer() {
   return (
     <footer className="border-t border-ink-lighter/60 px-4 py-10 sm:px-6">
       <div className="mx-auto flex max-w-[1100px] flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <span className="flex items-center gap-2 text-sm font-bold tracking-tight">
+        <span className="flex items-center gap-2 text-sm font-black tracking-tight">
           <BrandMark className="h-5 w-auto" />
           distill
         </span>

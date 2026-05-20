@@ -2,15 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/features/page-header";
+import { SettingsCard } from "@/components/features/settings-card";
 
 interface Server {
   id: string;
@@ -70,48 +65,39 @@ export function ProfileClient({ name, email, avatar, subscriptionStatus }: Profi
   const isActive = subscriptionStatus === "active";
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Profile & Account</h2>
+    <div className="space-y-8">
+      <PageHeader eyebrow="Settings" title="Profile" />
 
-      {/* Account Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Account</CardTitle>
-          <CardDescription>Your Discord account details</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            {avatar ? (
-              <img src={avatar} alt={name} className="h-16 w-16 rounded-full" />
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-ink-lightest text-xl font-bold text-ink-dark">
-                {name[0]?.toUpperCase() ?? "?"}
-              </div>
-            )}
-            <div>
-              <p className="text-lg font-semibold">{name}</p>
-              <p className="text-sm text-ink-dark">{email}</p>
+      <SettingsCard title="Account" description="Your Discord account details">
+        <div className="flex items-center gap-4">
+          {avatar ? (
+            <img src={avatar} alt={name} className="h-16 w-16 rounded-full" />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-ink-lightest text-xl font-bold text-ink-dark">
+              {name[0]?.toUpperCase() ?? "?"}
             </div>
+          )}
+          <div>
+            <p className="text-lg font-semibold">{name}</p>
+            <p className="text-sm text-ink-medium">{email}</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </SettingsCard>
 
-      {/* Subscription */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            Subscription
-            <Badge variant={isActive ? "default" : "secondary"}>
-              {subscriptionStatus}
-            </Badge>
-          </CardTitle>
-          <CardDescription>
-            {isActive
-              ? "Your subscription is active. You have full access to Distill."
-              : "Subscribe to start generating newsletters from your Discord."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
+      <SettingsCard
+        title="Subscription"
+        description={
+          isActive
+            ? "Your subscription is active. You have full access to Distill."
+            : "Subscribe to start generating newsletters from your Discord."
+        }
+        action={
+          <Badge variant={isActive ? "default" : "secondary"}>
+            {subscriptionStatus}
+          </Badge>
+        }
+      >
+        <div className="space-y-2">
           {isActive ? (
             <>
               <Button
@@ -130,77 +116,64 @@ export function ProfileClient({ name, email, avatar, subscriptionStatus }: Profi
               {loadingCheckout ? "Redirecting..." : "Subscribe now"}
             </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </SettingsCard>
 
-      {/* Servers */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Servers</CardTitle>
-          <CardDescription>Discord servers connected to Distill</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loadingServers ? (
-            <p className="text-sm text-ink-dark">Loading...</p>
-          ) : servers.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-sm text-ink-dark mb-3">No servers connected yet</p>
-              <Link href="/dashboard/onboarding">
-                <Button variant="outline" size="sm">Connect a server</Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {servers.map((server) => (
-                <div
-                  key={server.id}
-                  className="flex items-center justify-between rounded-lg border px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium">{server.name}</span>
-                    <Badge
-                      variant={server.status === "active" ? "default" : "secondary"}
-                      className="text-[10px]"
-                    >
-                      {server.status}
-                    </Badge>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link href={`/dashboard/servers/${server.id}`}>
-                      <Button variant="outline" size="sm">Settings</Button>
-                    </Link>
-                    <Link href={`/dashboard/servers/${server.id}/newsletters`}>
-                      <Button variant="outline" size="sm">Newsletters</Button>
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Danger Zone */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-negative">Danger Zone</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Sign out</p>
-              <p className="text-xs text-ink-dark">Sign out of your Distill account</p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { window.location.href = "/api/auth/signout"; }}
-            >
-              Sign out
-            </Button>
+      <SettingsCard title="Your Servers" description="Discord servers connected to Distill">
+        {loadingServers ? (
+          <p className="text-sm text-ink-medium">Loading...</p>
+        ) : servers.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-sm text-ink-medium mb-3">No servers connected yet</p>
+            <Link href="/dashboard/onboarding">
+              <Button variant="outline" size="sm">Connect a server</Button>
+            </Link>
           </div>
-        </CardContent>
-      </Card>
+        ) : (
+          <div className="space-y-3">
+            {servers.map((server) => (
+              <div
+                key={server.id}
+                className="flex items-center justify-between rounded-lg border px-4 py-3"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="font-medium">{server.name}</span>
+                  <Badge
+                    variant={server.status === "active" ? "default" : "secondary"}
+                    className="text-[10px]"
+                  >
+                    {server.status}
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Link href={`/dashboard/servers/${server.id}`}>
+                    <Button variant="outline" size="sm">Settings</Button>
+                  </Link>
+                  <Link href={`/dashboard/servers/${server.id}/newsletters`}>
+                    <Button variant="outline" size="sm">Newsletters</Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SettingsCard>
+
+      <SettingsCard title="Danger Zone">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Sign out</p>
+            <p className="text-xs text-ink-medium">Sign out of your Distill account</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { window.location.href = "/api/auth/signout"; }}
+          >
+            Sign out
+          </Button>
+        </div>
+      </SettingsCard>
     </div>
   );
 }

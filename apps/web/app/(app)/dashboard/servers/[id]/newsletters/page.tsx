@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
+import { FileText } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { PageHeader } from "@/components/features/page-header";
+import { NewsletterFeed } from "@/components/features/newsletter-feed";
+import type { NewsletterFeedItem } from "@/components/features/newsletter-feed";
+import { EmptyState } from "@/components/features/empty-state";
 
 interface Newsletter {
   id: string;
@@ -81,36 +84,48 @@ export default function NewslettersPage() {
 
   const quotaExhausted = quota && quota.remaining <= 0;
 
+  const generateButton = (
+    <Button
+      onClick={handleGenerate}
+      disabled={generating || !!quotaExhausted}
+    >
+      {generating
+        ? "Generating..."
+        : quotaExhausted
+          ? quota?.tier === "free"
+            ? "Subscribe to generate"
+            : "Limit reached"
+          : quota?.tier === "free"
+            ? "Try free"
+            : "Generate now"}
+    </Button>
+  );
+
+  const feedItems: NewsletterFeedItem[] = newsletters.map((nl) => ({
+    id: nl.id,
+    serverId,
+    serverName: "",
+    title: extractTitle(nl),
+    status: nl.status,
+    updatedLabel: formatDistanceToNow(new Date(nl.created_at ?? ""), { addSuffix: true }),
+  }));
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold">Newsletters</h2>
-          {quota && (
-            <p className="text-xs text-ink-medium mt-1">
-              {quota.tier === "free"
-                ? quota.remaining > 0
-                  ? "1 free generation available for this server"
-                  : "Free generation used — subscribe to keep going"
-                : `${quota.remaining}/${quota.limit} on-demand generations left this month (${quota.tier})`}
-            </p>
-          )}
-        </div>
-        <Button
-          onClick={handleGenerate}
-          disabled={generating || !!quotaExhausted}
-        >
-          {generating
-            ? "Generating..."
-            : quotaExhausted
-              ? quota?.tier === "free"
-                ? "Subscribe to generate"
-                : "Limit reached"
-              : quota?.tier === "free"
-                ? "Try free"
-                : "Generate now"}
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Server"
+        title="Newsletters"
+        description={
+          quota
+            ? quota.tier === "free"
+              ? quota.remaining > 0
+                ? "1 free generation available for this server"
+                : "Free generation used — subscribe to keep going"
+              : `${quota.remaining}/${quota.limit} on-demand generations left this month (${quota.tier})`
+            : undefined
+        }
+        action={generateButton}
+      />
 
       {error && (
         <p className="mb-4 text-sm text-negative bg-negative/10 rounded-lg px-4 py-3">
@@ -119,53 +134,16 @@ export default function NewslettersPage() {
       )}
 
       {newsletters.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-ink-dark mb-4">
-              No newsletters yet. Generate your first one!
-            </p>
-            <Button
-              onClick={handleGenerate}
-              disabled={generating || !!quotaExhausted}
-            >
-              {generating ? "Generating..." : "Generate now"}
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={FileText}
+          title="No newsletters yet"
+          description="Generate a newsletter draft from this server's recent Discord activity."
+          actionLabel="Generate now"
+          onAction={handleGenerate}
+          actionDisabled={generating || !!quotaExhausted}
+        />
       ) : (
-        <div className="grid gap-4">
-          {newsletters.map((nl) => (
-            <Card key={nl.id}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">
-                    {extractTitle(nl)}
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(nl.created_at).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={nl.status === "published" ? "default" : "secondary"}
-                  >
-                    {nl.status}
-                  </Badge>
-                  <Link href={`/dashboard/servers/${serverId}/newsletters/${nl.id}`}>
-                    <Button variant="outline" size="sm">
-                      Edit
-                    </Button>
-                  </Link>
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
+        <NewsletterFeed items={feedItems} />
       )}
     </div>
   );
