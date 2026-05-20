@@ -42,21 +42,21 @@ export function FAQ() {
           {"// the things you'd ask before you'd sign up"}
         </p>
 
-        <h2 className="mt-6 text-[clamp(28px,4.2vw,48px)] font-bold leading-[1.1] tracking-tight">
+        <h2 className="mt-6 text-[clamp(28px,4.2vw,48px)] font-black leading-[1.1] tracking-tight">
           Six honest answers.
         </h2>
 
-        <div className="mt-12">
+        <div className="mt-12 rounded-card border border-ink-lighter bg-canvas">
           {faqs.map((faq, i) => {
             const isOpen = open === i;
             return (
-              <div key={i} className="border-b border-ink-lighter">
+              <div key={i} className="border-b border-ink-lighter last:border-b-0">
                 <button
                   type="button"
                   onClick={() => setOpen(isOpen ? null : i)}
-                  className="group flex w-full cursor-pointer items-start justify-between gap-4 py-5 text-left"
+                  className="group flex w-full cursor-pointer items-start justify-between gap-4 px-6 py-5 text-left"
                 >
-                  <span className="text-[15px] font-semibold leading-snug text-ink sm:text-[17px]">
+                  <span className="text-[15px] font-semibold leading-snug text-ink-darker sm:text-[17px]">
                     {faq.q}
                   </span>
                   <span
@@ -86,7 +86,7 @@ export function FAQ() {
                     opacity: isOpen ? 1 : 0,
                   }}
                 >
-                  <p className="pb-5 pr-10 text-[14px] leading-relaxed text-ink-dark sm:text-[16px]">
+                  <p className="pb-5 pr-10 pl-6 text-[14px] leading-relaxed text-ink-medium sm:text-[16px]">
                     {faq.a}
                   </p>
                 </div>
