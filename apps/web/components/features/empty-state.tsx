@@ -9,6 +9,7 @@ interface EmptyStateProps {
   description: string;
   actionLabel?: string;
   onAction?: () => void;
+  actionDisabled?: boolean;
 }
 
 export function EmptyState({
@@ -17,6 +18,7 @@ export function EmptyState({
   description,
   actionLabel,
   onAction,
+  actionDisabled,
 }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
@@ -26,7 +28,7 @@ export function EmptyState({
       <h3 className="text-lg font-bold text-ink mb-1">{title}</h3>
       <p className="text-sm text-ink-medium mb-6 max-w-sm">{description}</p>
       {actionLabel && onAction && (
-        <Button onClick={onAction}>{actionLabel}</Button>
+        <Button onClick={onAction} disabled={actionDisabled}>{actionLabel}</Button>
       )}
     </div>
   );
