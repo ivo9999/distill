@@ -6,13 +6,24 @@ import { Button } from "@/components/ui/button";
 
 export function SubscribeBanner() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubscribe = async () => {
     setLoading(true);
-    const res = await fetch("/api/proxy/billing/checkout", { method: "POST" });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
+    setError(null);
+    try {
+      const res = await fetch("/api/proxy/billing/checkout", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return; // keep the button in its loading state through navigation
+      }
+      setError(
+        data.error ||
+          "Couldn't start checkout. Please try again in a moment.",
+      );
+    } catch {
+      setError("Couldn't reach the server. Please try again.");
     }
     setLoading(false);
   };
@@ -31,15 +42,19 @@ export function SubscribeBanner() {
           </p>
         </div>
       </div>
-      <Button
-        variant="primary"
-        onClick={handleSubscribe}
-        disabled={loading}
-        size="sm"
-        className="shrink-0"
-      >
-        {loading ? "Redirecting..." : "Subscribe — $49/mo"}
-      </Button>
+      <div className="flex shrink-0 flex-col items-stretch gap-1 md:items-end">
+        <Button
+          variant="primary"
+          onClick={handleSubscribe}
+          disabled={loading}
+          size="sm"
+        >
+          {loading ? "Redirecting..." : "Subscribe — $49/mo"}
+        </Button>
+        {error && (
+          <p className="text-xs text-negative md:text-right">{error}</p>
+        )}
+      </div>
     </div>
   );
 }

@@ -35,7 +35,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { NotificationBell } from "@/components/features/notification-bell";
 
 export interface HeaderServer {
   id: string;
@@ -243,16 +242,15 @@ export function FizzyHeader({
         </PopoverContent>
       </Popover>
 
-      {/* Row 2: bell + framed title + avatar */}
+      {/* Row 2: framed title + avatar. A spacer mirrors the avatar's
+          width on the left so the rule—title—rule framing stays
+          centered. */}
       <div
         className="mx-auto mt-3 flex w-full flex-col items-stretch gap-2 sm:mt-6 sm:w-[80%]"
         style={{ gridColumn: "1 / -1" }}
       >
         <div className="flex w-full items-center gap-2">
-          <NotificationBell
-            className="h-10 w-10 rounded-full bg-ink text-ink-inverted hover:bg-ink hover:text-ink-inverted hover:brightness-110 sm:h-12 sm:w-12"
-            iconClassName="h-4 w-4 sm:h-5 sm:w-5"
-          />
+          <span aria-hidden className="h-10 w-10 shrink-0 sm:h-12 sm:w-12" />
           <span aria-hidden className="h-px flex-1 bg-ink-lighter" />
           <h1 className="truncate px-2 text-center text-lg font-black tracking-tight text-ink sm:px-3 sm:text-3xl">
             {title}
