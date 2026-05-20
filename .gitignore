@@ -16,3 +16,6 @@ node_modules/
 # Output
 scripts/experiment/output/*.md
 !scripts/experiment/output/.gitkeep
+
+# Local development worktrees (superpowers)
+.worktrees/
