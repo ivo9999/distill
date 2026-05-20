@@ -22,6 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { PageHeader } from "@/components/features/page-header";
 
 type RegenerateDirective = "tighter" | "funnier" | "more_detail" | "rewrite_from_messages";
 
@@ -458,212 +459,216 @@ export default function NewsletterEditorPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
+      <div className="flex items-center justify-center h-64 text-ink-medium">
         Loading editor...
       </div>
     );
   }
 
+  // The publish action lives in the PageHeader action slot.
+  // The Dialog wrapper stays here so all dialog state (subject, platform,
+  // publish error, subject options) remains exactly where it was.
+  const publishAction = isSubscribed === false ? (
+    <Button size="sm" onClick={handleStartCheckout}>
+      <Send className="h-3.5 w-3.5 mr-1.5" />
+      Subscribe to publish
+    </Button>
+  ) : (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Send className="h-3.5 w-3.5 mr-1.5" />
+          Publish
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Publish newsletter</DialogTitle>
+          <DialogDescription>
+            Pick a subject line and a destination.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Subject + AI suggestions. This is the friction
+            point that stalls Sunday-night publishing — the
+            user has to invent a subject in the moment, with
+            none of the context they had while drafting. The
+            AI suggester turns this into a 3-option pick. */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-ink">Subject</label>
+            <button
+              type="button"
+              onClick={handleSuggestSubjects}
+              disabled={subjectLoading || !content.trim()}
+              className="inline-flex items-center gap-1 text-xs text-link hover:underline disabled:opacity-50"
+            >
+              {subjectLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Wand2 className="h-3 w-3" />
+              )}
+              Suggest 3 options
+            </button>
+          </div>
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            maxLength={100}
+            className="w-full rounded-md border border-ink-lighter bg-background px-3 py-2 text-sm focus:outline-none focus:border-ink-medium"
+            placeholder="Your inbox subject line"
+          />
+          {subjectError && (
+            <p className="text-xs text-negative">{subjectError}</p>
+          )}
+          {subjectOptions.length > 0 && (
+            <div className="space-y-1.5 pt-1">
+              {subjectOptions.map((o) => (
+                <button
+                  key={o.text}
+                  type="button"
+                  onClick={() => setSubject(o.text)}
+                  className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
+                    subject === o.text
+                      ? "border-foreground bg-muted"
+                      : "border-ink-lighter hover:border-ink-medium"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-medium">{o.text}</span>
+                    <span className="shrink-0 rounded-pill bg-ink-lighter px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-dark">
+                      {SUBJECT_STYLE_LABELS[o.style]}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-ink-dark">
+                    {o.rationale}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2 border-t border-ink-lighter pt-3">
+          <label className="text-xs font-medium text-ink">
+            Destination
+          </label>
+          {platforms.map((platform) => (
+            <button
+              key={platform.id}
+              onClick={() => setSelectedPlatform(platform.id)}
+              className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
+                selectedPlatform === platform.id
+                  ? "border-foreground bg-muted"
+                  : "border-border hover:border-foreground/30"
+              }`}
+            >
+              <span className="font-medium text-sm">
+                {platform.name}
+              </span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                {platform.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {publishError && (
+          <p className="text-sm text-negative">{publishError}</p>
+        )}
+        <DialogFooter>
+          <Button
+            onClick={handlePublish}
+            disabled={!selectedPlatform || publishing || !subject.trim()}
+            size="sm"
+          >
+            {publishing ? "Publishing..." : "Publish"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
-    <div className="-mx-4 -my-6 md:-my-8 flex flex-col min-h-[calc(100vh-3.5rem)] border-y border-ink-lighter">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-ink-lighter px-4 py-3 shrink-0">
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)]">
+      {/* Page header with back nav, title, and publish action */}
+      <div className="border-b border-ink-lighter pb-4">
+        <div className="flex items-center gap-2 mb-3">
           <button
             onClick={() =>
               router.push(`/dashboard/servers/${serverId}/newsletters`)
             }
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-ink-medium hover:text-ink transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div>
-            <h2 className="text-sm font-semibold leading-none">
-              Newsletter Editor
-            </h2>
-            {generatedAt && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {new Date(generatedAt).toLocaleDateString("en-GB")}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Pane toggle. On desktop, "Edit" + "Preview" can run
-              side-by-side so the toggle only flips the preview pane
-              between markdown-render and email-render. On mobile,
-              the toggle picks one of three exclusive panes. */}
-          <div className="flex border rounded-lg overflow-hidden">
-            <button
-              onClick={() => setTab("edit")}
-              className={`flex md:hidden items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                tab === "edit"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Pencil className="h-3 w-3" />
-              Edit
-            </button>
-            <button
-              onClick={() => setTab("preview")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                tab === "preview"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              title="Markdown preview"
-            >
-              <Eye className="h-3 w-3" />
-              Preview
-            </button>
-            <button
-              onClick={() => setTab("email")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                tab === "email"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              title="See this as an email"
-            >
-              <Mail className="h-3 w-3" />
-              Email
-            </button>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            <Save className="h-3.5 w-3.5 mr-1.5" />
-            {saving ? "Saving..." : saved ? "Saved!" : "Save"}
-          </Button>
-
-          {isSubscribed === false ? (
-            <Button size="sm" onClick={handleStartCheckout}>
-              <Send className="h-3.5 w-3.5 mr-1.5" />
-              Subscribe to publish
-            </Button>
-          ) : (
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Send className="h-3.5 w-3.5 mr-1.5" />
-                  Publish
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Publish newsletter</DialogTitle>
-                  <DialogDescription>
-                    Pick a subject line and a destination.
-                  </DialogDescription>
-                </DialogHeader>
-
-                {/* Subject + AI suggestions. This is the friction
-                    point that stalls Sunday-night publishing — the
-                    user has to invent a subject in the moment, with
-                    none of the context they had while drafting. The
-                    AI suggester turns this into a 3-option pick. */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-ink">Subject</label>
-                    <button
-                      type="button"
-                      onClick={handleSuggestSubjects}
-                      disabled={subjectLoading || !content.trim()}
-                      className="inline-flex items-center gap-1 text-xs text-link hover:underline disabled:opacity-50"
-                    >
-                      {subjectLoading ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Wand2 className="h-3 w-3" />
-                      )}
-                      Suggest 3 options
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    maxLength={100}
-                    className="w-full rounded-md border border-ink-lighter bg-background px-3 py-2 text-sm focus:outline-none focus:border-ink-medium"
-                    placeholder="Your inbox subject line"
-                  />
-                  {subjectError && (
-                    <p className="text-xs text-negative">{subjectError}</p>
-                  )}
-                  {subjectOptions.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      {subjectOptions.map((o) => (
-                        <button
-                          key={o.text}
-                          type="button"
-                          onClick={() => setSubject(o.text)}
-                          className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
-                            subject === o.text
-                              ? "border-foreground bg-muted"
-                              : "border-ink-lighter hover:border-ink-medium"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-sm font-medium">{o.text}</span>
-                            <span className="shrink-0 rounded-pill bg-ink-lighter px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-dark">
-                              {SUBJECT_STYLE_LABELS[o.style]}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 text-[11px] text-ink-dark">
-                            {o.rationale}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2 border-t border-ink-lighter pt-3">
-                  <label className="text-xs font-medium text-ink">
-                    Destination
-                  </label>
-                  {platforms.map((platform) => (
-                    <button
-                      key={platform.id}
-                      onClick={() => setSelectedPlatform(platform.id)}
-                      className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
-                        selectedPlatform === platform.id
-                          ? "border-foreground bg-muted"
-                          : "border-border hover:border-foreground/30"
-                      }`}
-                    >
-                      <span className="font-medium text-sm">
-                        {platform.name}
-                      </span>
-                      <span className="block text-xs text-muted-foreground mt-0.5">
-                        {platform.desc}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {publishError && (
-                  <p className="text-sm text-negative">{publishError}</p>
-                )}
-                <DialogFooter>
-                  <Button
-                    onClick={handlePublish}
-                    disabled={!selectedPlatform || publishing || !subject.trim()}
-                    size="sm"
-                  >
-                    {publishing ? "Publishing..." : "Publish"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+          {generatedAt && (
+            <span className="text-xs text-ink-medium">
+              {new Date(generatedAt).toLocaleDateString("en-GB")}
+            </span>
           )}
         </div>
+        <PageHeader
+          eyebrow={serverName || "Newsletter"}
+          title="Newsletter Editor"
+          action={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                {saving ? "Saving..." : saved ? "Saved!" : "Save"}
+              </Button>
+              {publishAction}
+            </div>
+          }
+        />
+      </div>
+
+      {/* Pane toggle tabs. On desktop, "Edit" + "Preview" can run
+          side-by-side so the toggle only flips the preview pane
+          between markdown-render and email-render. On mobile,
+          the toggle picks one of three exclusive panes. */}
+      <div className="flex items-center gap-1 border-b border-ink-lighter px-4 py-2 shrink-0">
+        <button
+          onClick={() => setTab("edit")}
+          className={`flex md:hidden items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            tab === "edit"
+              ? "bg-ink text-background"
+              : "text-ink-medium hover:text-ink hover:bg-ink-lightest"
+          }`}
+        >
+          <Pencil className="h-3 w-3" />
+          Edit
+        </button>
+        <button
+          onClick={() => setTab("preview")}
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            tab === "preview"
+              ? "bg-ink text-background"
+              : "text-ink-medium hover:text-ink hover:bg-ink-lightest"
+          }`}
+          title="Markdown preview"
+        >
+          <Eye className="h-3 w-3" />
+          Preview
+        </button>
+        <button
+          onClick={() => setTab("email")}
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            tab === "email"
+              ? "bg-ink text-background"
+              : "text-ink-medium hover:text-ink hover:bg-ink-lightest"
+          }`}
+          title="See this as an email"
+        >
+          <Mail className="h-3 w-3" />
+          Email
+        </button>
       </div>
 
       {/* Editor / Preview split. In email mode, the preview pane goes
@@ -677,17 +682,17 @@ export default function NewsletterEditorPage() {
         {/* Editor pane — hidden in email mode entirely; hidden on
             mobile when the user is in preview mode. */}
         <div
-          className={`flex flex-col border-r ${
+          className={`flex flex-col border-r border-ink-lighter ${
             tab === "email" ? "hidden" : tab === "preview" ? "hidden md:flex" : ""
           }`}
         >
-          <div className="px-4 py-2 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:block">
+          <div className="px-4 py-2 border-b border-ink-lighter text-[11px] font-bold uppercase tracking-widest text-ink-medium hidden md:block">
             Markdown
           </div>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="flex-1 w-full p-4 font-mono text-sm leading-relaxed resize-none bg-transparent outline-none placeholder:text-muted-foreground"
+            className="flex-1 w-full p-4 font-mono text-sm leading-relaxed resize-none bg-transparent outline-none placeholder:text-ink-medium"
             placeholder="Write your newsletter in markdown..."
             spellCheck={false}
           />
@@ -697,7 +702,7 @@ export default function NewsletterEditorPage() {
         <div
           className={`flex flex-col min-h-0 ${tab === "edit" ? "hidden md:flex" : ""}`}
         >
-          <div className="px-4 py-2 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:block">
+          <div className="px-4 py-2 border-b border-ink-lighter text-[11px] font-bold uppercase tracking-widest text-ink-medium hidden md:block">
             {tab === "email" ? "Email preview" : "Preview"}
           </div>
           <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -725,11 +730,11 @@ export default function NewsletterEditorPage() {
             )}
 
             {sources.length > 0 && tab !== "email" && (
-              <section className="border-t pt-6">
+              <section className="border-t border-ink-lighter pt-6">
                 <header className="mb-3 flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-ink-dark" />
-                  <h3 className="text-sm font-semibold">Source messages</h3>
-                  <span className="text-xs text-ink-dark">
+                  <MessageSquare className="h-4 w-4 text-ink-medium" />
+                  <h3 className="text-sm font-black tracking-tight text-ink">Source messages</h3>
+                  <span className="text-xs text-ink-medium">
                     — every section, traced back to the Discord threads it came from. Use Rewrite to nudge the AI on one section without losing the others.
                   </span>
                 </header>
@@ -753,24 +758,24 @@ export default function NewsletterEditorPage() {
                             className="flex min-w-0 flex-1 items-start gap-2 text-left hover:opacity-80"
                           >
                             {open ? (
-                              <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-dark" />
+                              <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-medium" />
                             ) : (
-                              <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-dark" />
+                              <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-medium" />
                             )}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <span className="truncate text-sm font-medium">
+                                <span className="truncate text-sm font-medium text-ink">
                                   {s.title}
                                 </span>
-                                <span className="shrink-0 rounded-pill bg-ink-lighter px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-dark">
+                                <span className="shrink-0 rounded-pill bg-ink-lighter px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-medium">
                                   {s.type}
                                 </span>
                               </div>
-                              <p className="mt-0.5 text-xs text-ink-dark">
+                              <p className="mt-0.5 text-xs text-ink-medium">
                                 {s.whyItMatters}
                               </p>
                             </div>
-                            <span className="shrink-0 text-xs text-ink-dark">
+                            <span className="shrink-0 text-xs text-ink-medium">
                               {s.messages.length}{" "}
                               {s.messages.length === 1 ? "message" : "messages"}
                             </span>
@@ -780,7 +785,7 @@ export default function NewsletterEditorPage() {
                               <button
                                 type="button"
                                 disabled={regeneratingId !== null}
-                                className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-ink-lighter px-2 text-xs text-ink-dark hover:bg-background disabled:opacity-50"
+                                className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-ink-lighter px-2 text-xs text-ink-medium hover:bg-background disabled:opacity-50"
                                 title="Rewrite this section"
                               >
                                 {regeneratingId === s.storyId ? (
@@ -792,7 +797,7 @@ export default function NewsletterEditorPage() {
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-64">
-                              <DropdownMenuLabel className="text-[11px] text-ink-dark">
+                              <DropdownMenuLabel className="text-[11px] text-ink-medium">
                                 AI rewrite
                               </DropdownMenuLabel>
                               {(Object.keys(DIRECTIVE_LABELS) as RegenerateDirective[]).map(
@@ -805,7 +810,7 @@ export default function NewsletterEditorPage() {
                                     <span className="text-sm">
                                       {DIRECTIVE_LABELS[d].label}
                                     </span>
-                                    <span className="text-[11px] text-ink-dark">
+                                    <span className="text-[11px] text-ink-medium">
                                       {DIRECTIVE_LABELS[d].hint}
                                     </span>
                                   </DropdownMenuItem>
@@ -835,16 +840,16 @@ export default function NewsletterEditorPage() {
                                   key={m.id}
                                   className="rounded bg-background/60 p-2 text-xs"
                                 >
-                                  <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-ink-dark">
+                                  <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-ink-medium">
                                     <span className="font-medium text-ink">
                                       {m.authorName}
                                     </span>
                                     {m.channelName && (
-                                      <span className="text-ink-dark">
+                                      <span className="text-ink-medium">
                                         #{m.channelName}
                                       </span>
                                     )}
-                                    <span className="text-ink-dark">
+                                    <span className="text-ink-medium">
                                       {relTime(m.timestamp)}
                                     </span>
                                     {url && (
@@ -852,14 +857,14 @@ export default function NewsletterEditorPage() {
                                         href={url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="ml-auto inline-flex items-center gap-1 text-ink-dark hover:text-link"
+                                        className="ml-auto inline-flex items-center gap-1 text-ink-medium hover:text-link"
                                       >
                                         View in Discord
                                         <ExternalLink className="h-3 w-3" />
                                       </a>
                                     )}
                                   </div>
-                                  <p className="whitespace-pre-wrap break-words text-ink-dark">
+                                  <p className="whitespace-pre-wrap break-words text-ink-medium">
                                     {m.content}
                                   </p>
                                 </li>
