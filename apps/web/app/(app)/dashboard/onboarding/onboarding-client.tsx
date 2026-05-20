@@ -39,6 +39,17 @@ interface DiscordChannel {
   name: string;
 }
 
+interface DiscordGuild {
+  id: string;
+  name: string;
+}
+
+interface Server {
+  id: string;
+  name: string;
+  discord_guild_id: string;
+}
+
 export function OnboardingClient({ discordBotUrl }: { discordBotUrl: string }) {
   const [step, setStep] = useState(1);
   const [discordChannels, setDiscordChannels] = useState<DiscordChannel[]>([]);
@@ -47,15 +58,64 @@ export function OnboardingClient({ discordBotUrl }: { discordBotUrl: string }) {
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [publicationId, setPublicationId] = useState("");
-  const [selectedServer, setSelectedServer] = useState<any>(null);
+  const [selectedServer, setSelectedServer] = useState<Server | null>(null);
   const [savingChannels, setSavingChannels] = useState(false);
   const [savingIntegration, setSavingIntegration] = useState(false);
+  // Bot guilds that don't yet have a server record. When >1, step 2
+  // shows a picker before the channel list; when exactly 1 it's
+  // auto-selected. Empty once a server is chosen.
+  const [guildCandidates, setGuildCandidates] = useState<DiscordGuild[]>([]);
+  // Existing servers captured at handleBotAdded time, consumed by the
+  // picker's onClick so selectGuild can dedupe without a refetch.
+  const [pickServers, setPickServers] = useState<Server[]>([]);
+  // Non-null when step 2 failed (no bot guild, or server creation
+  // errored) — drives the fallback card's message.
+  const [setupError, setSetupError] = useState<string | null>(null);
+
+  // Resolve a guild into a server record (reuse an existing one for that
+  // guild, else create it), then load that server's Discord channels.
+  const selectGuild = async (guild: DiscordGuild, existing: Server[]) => {
+    setLoadingChannels(true);
+    setGuildCandidates([]);
+    setSetupError(null);
+    let server = existing.find((s) => s.discord_guild_id === guild.id) ?? null;
+    if (!server) {
+      const createRes = await fetch("/api/proxy/servers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: guild.name, discord_guild_id: guild.id }),
+      });
+      if (createRes.ok) {
+        server = await createRes.json();
+      } else {
+        setSetupError(
+          `Couldn't add "${guild.name}". Please try again in a moment.`,
+        );
+      }
+    }
+    if (server) {
+      setSelectedServer(server);
+      setSelectedChannels(new Set());
+      const chRes = await fetch(
+        `/api/proxy/discord/guilds/${server.discord_guild_id}/channels`,
+      );
+      if (chRes.ok) {
+        setDiscordChannels(await chRes.json());
+      } else {
+        setDiscordChannels([]);
+      }
+    }
+    setLoadingChannels(false);
+  };
 
   const handleBotAdded = async () => {
     setLoadingChannels(true);
+    setSelectedServer(null);
+    setGuildCandidates([]);
+    setSetupError(null);
     setStep(2);
 
-    // 1. Get guilds the bot is in
+    // 1. Guilds the bot is in.
     const botGuildsRes = await fetch("/api/proxy/discord/bot-guilds");
     const botGuilds = await botGuildsRes.json();
     if (!Array.isArray(botGuilds) || botGuilds.length === 0) {
@@ -63,41 +123,30 @@ export function OnboardingClient({ discordBotUrl }: { discordBotUrl: string }) {
       return;
     }
 
-    // 2. Check if we already have a server record, if not create one
+    // 2. Existing server records.
     const serversRes = await fetch("/api/proxy/servers");
-    const servers = await serversRes.json();
-    let server = Array.isArray(servers)
-      ? servers.find((s: any) => botGuilds.some((g: any) => g.id === s.discord_guild_id))
-      : null;
+    const serversRaw = await serversRes.json();
+    const servers: Server[] = Array.isArray(serversRaw) ? serversRaw : [];
 
-    if (!server) {
-      // Auto-create server from the first bot guild
-      const guild = botGuilds[0];
-      const createRes = await fetch("/api/proxy/servers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: guild.name,
-          discord_guild_id: guild.id,
-        }),
-      });
-      if (createRes.ok) {
-        server = await createRes.json();
-      }
-    }
+    // 3. Prefer guilds that aren't set up yet — that's the one the user
+    //    just added. If every bot guild already has a server, fall back
+    //    to letting them pick from all bot guilds (re-configure flow).
+    const configuredGuildIds = new Set(servers.map((s) => s.discord_guild_id));
+    const unconfigured = botGuilds.filter(
+      (g: DiscordGuild) => !configuredGuildIds.has(g.id),
+    );
+    const choices: DiscordGuild[] =
+      unconfigured.length > 0 ? unconfigured : botGuilds;
 
-    if (server) {
-      setSelectedServer(server);
-      // 3. Fetch channels from Discord
-      const chRes = await fetch(
-        `/api/proxy/discord/guilds/${server.discord_guild_id}/channels`,
-      );
-      if (chRes.ok) {
-        const channels = await chRes.json();
-        setDiscordChannels(channels);
-      }
+    if (choices.length === 1) {
+      await selectGuild(choices[0], servers);
+    } else {
+      // Multiple candidates — show the picker. Stash the existing
+      // servers so the picker's onClick can dedupe without a refetch.
+      setPickServers(servers);
+      setGuildCandidates(choices);
+      setLoadingChannels(false);
     }
-    setLoadingChannels(false);
   };
 
   const toggleChannel = (channelId: string) => {
@@ -210,15 +259,78 @@ export function OnboardingClient({ discordBotUrl }: { discordBotUrl: string }) {
         </Card>
       )}
 
-      {/* Step 2: Pick channels */}
-      {step === 2 && (
+      {/* Step 2: Pick a server (when the bot is in several) then its
+          channels. The picker shows only when there's an ambiguous set
+          of candidate guilds and none is selected yet. */}
+      {step === 2 && guildCandidates.length > 0 && !selectedServer && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Choose a server</CardTitle>
+            <CardDescription>
+              The Distill bot is in more than one Discord server. Pick the
+              one you want to set up.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1 rounded-card border border-ink-lighter p-2">
+              {guildCandidates.map((guild) => (
+                <button
+                  key={guild.id}
+                  onClick={() => selectGuild(guild, pickServers)}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-ink-lightest"
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-card bg-brand text-sm font-bold text-brand-foreground">
+                    {guild.name?.[0]?.toUpperCase() ?? "?"}
+                  </span>
+                  <span className="text-sm font-medium">{guild.name}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-start">
+              <Button variant="outline" onClick={() => setStep(1)}>
+                Back
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 2: no guilds found at all — the bot isn't in any server. */}
+      {step === 2 &&
+        !loadingChannels &&
+        !selectedServer &&
+        guildCandidates.length === 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">
+                {setupError ? "Something went wrong" : "No server found"}
+              </CardTitle>
+              <CardDescription>
+                {setupError ??
+                  "We couldn't find a Discord server with the Distill bot. Add the bot to a server, then try again."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-between">
+              <Button variant="outline" onClick={() => setStep(1)}>
+                Back
+              </Button>
+              <Button onClick={handleBotAdded}>Retry</Button>
+            </CardContent>
+          </Card>
+        )}
+
+      {/* Step 2: Pick channels — shown once a server is resolved (or
+          while channels load for it). */}
+      {step === 2 && (selectedServer !== null || loadingChannels) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">
               Pick channels to monitor
             </CardTitle>
             <CardDescription>
-              Select the Discord channels you want Distill to read.
+              {selectedServer
+                ? `Select the channels Distill should read in ${selectedServer.name}.`
+                : "Select the Discord channels you want Distill to read."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
