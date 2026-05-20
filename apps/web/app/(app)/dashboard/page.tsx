@@ -3,16 +3,18 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Calendar, ArrowRight, Sparkles, Settings as SettingsIcon, FileText, Loader2 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Server as ServerIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
 import {
   GenerationError,
   type GenerationErrorState,
 } from "@/components/generation-error";
+import { PageHeader } from "@/components/features/page-header";
+import { NewsletterFeed, type NewsletterFeedItem } from "@/components/features/newsletter-feed";
+import { ServerCard } from "@/components/features/server-card";
+import { EmptyState } from "@/components/features/empty-state";
 
 function humanCron(cron: string): string {
   const parts = cron.split(" ");
@@ -53,29 +55,17 @@ interface Quota {
   tier: string;
 }
 
-// Per-server avatar colour rotation. The first server a user adds gets the
-// brand purple so their primary workspace reads as on-brand; the second
-// gets Discord-blue (signalling the bot connection), then the reserved
-// accent triad. Beyond six servers the rotation wraps — distinct enough
-// to tell adjacent cards apart.
-const accentByIndex = [
-  "bg-brand",
-  "bg-brand-discord",
-  "bg-brand-warm",
-  "bg-brand-bright",
-  "bg-brand-hot",
-  "bg-accent-5",
-];
+type DraftWithDate = NewsletterFeedItem & { _ts: number };
 
 export default function DashboardPage() {
   const router = useRouter();
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<
     (GenerationErrorState & { id: string }) | null
   >(null);
   const [quotas, setQuotas] = useState<Record<string, Quota>>({});
+  const [drafts, setDrafts] = useState<DraftWithDate[]>([]);
 
   useEffect(() => {
     fetch("/api/proxy/servers")
@@ -88,6 +78,38 @@ export default function DashboardPage() {
           fetch(`/api/proxy/servers/${server.id}/generation-quota`)
             .then((r) => r.json())
             .then((q) => setQuotas((prev) => ({ ...prev, [server.id]: q })))
+            .catch(() => {});
+        });
+        s.forEach((server: Server) => {
+          fetch(`/api/proxy/servers/${server.id}/newsletters`)
+            .then((r) => r.json())
+            .then((newsletters) => {
+              if (!Array.isArray(newsletters)) return;
+              const items: DraftWithDate[] = newsletters
+                .slice(0, 3)
+                .map((n: { id: string; subject?: string | null; status: string; updated_at?: string; created_at?: string }) => {
+                  const dateStr = n.updated_at ?? n.created_at ?? new Date(0).toISOString();
+                  const ts = Date.parse(dateStr);
+                  return {
+                    id: n.id,
+                    serverId: server.id,
+                    serverName: server.name,
+                    title: n.subject ?? "Untitled draft",
+                    status: n.status,
+                    updatedLabel: formatDistanceToNow(new Date(dateStr), { addSuffix: true }),
+                    _ts: isNaN(ts) ? 0 : ts,
+                  };
+                });
+              setDrafts((prev) => {
+                const map = new Map<string, DraftWithDate>();
+                for (const item of [...prev, ...items]) {
+                  const existing = map.get(item.id);
+                  if (!existing || item._ts > existing._ts) map.set(item.id, item);
+                }
+                const deduped = Array.from(map.values());
+                return deduped.sort((a, b) => b._ts - a._ts).slice(0, 8);
+              });
+            })
             .catch(() => {});
         });
       })
@@ -106,31 +128,17 @@ export default function DashboardPage() {
 
   if (servers.length === 0) {
     return (
-      <Card className="mx-auto max-w-xl text-center">
-        <CardContent className="flex flex-col items-center gap-4 py-12">
-          <div className="flex h-12 w-12 items-center justify-center rounded-pill bg-brand-soft text-brand">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-2xl font-bold tracking-tight">Welcome to Distill</h2>
-            <p className="text-sm text-ink-dark">
-              Connect your first Discord server to get started. Your first
-              generation is free.
-            </p>
-          </div>
-          <Link href="/dashboard/onboarding">
-            <Button variant="primary" size="lg" className="rounded-pill">
-              Set up your first server
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={ServerIcon}
+        title="Welcome to Distill"
+        description="Connect your first Discord server to get started. Your first generation is free."
+        actionLabel="Set up your first server"
+        onAction={() => router.push("/dashboard/onboarding")}
+      />
     );
   }
 
   const handleGenerate = async (serverId: string) => {
-    setGeneratingId(serverId);
     setGenerateError(null);
     let data: {
       saved?: boolean;
@@ -149,7 +157,6 @@ export default function DashboardPage() {
         data = { error: "Unexpected response from server", category: "internal" };
       }
       if (res.ok && data.saved && data.id) {
-        setGeneratingId(null);
         setQuotas((prev) => {
           const q = prev[serverId];
           if (q)
@@ -168,7 +175,6 @@ export default function DashboardPage() {
         category: "internal",
       };
     }
-    setGeneratingId(null);
     setGenerateError({
       id: serverId,
       message: data.error || "Failed to generate. Please try again.",
@@ -180,114 +186,49 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Your servers</h1>
-          <p className="mt-1 text-sm text-ink-dark">
-            Generate weekly newsletter drafts from your Discord communities.
-          </p>
-        </div>
-        <Link href="/dashboard/onboarding">
-          <Button variant="outline" size="sm">
-            Add another server
-          </Button>
-        </Link>
+      <PageHeader
+        eyebrow="Dashboard"
+        title="What's moving"
+        description="Recent newsletter drafts across your Discord servers."
+        action={
+          <Link href="/dashboard/onboarding">
+            <Button variant="outline" size="sm">Add another server</Button>
+          </Link>
+        }
+      />
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <section>
+          <NewsletterFeed items={drafts.map(({ _ts: _ignored, ...rest }) => rest)} />
+        </section>
+        <aside>
+          <h2 className="mb-2 px-1 text-[11px] font-bold uppercase tracking-widest text-ink-medium">
+            Servers
+          </h2>
+          <div className="flex flex-col gap-3">
+            {servers.map((server) => {
+              const quota = quotas[server.id];
+              return (
+                <ServerCard
+                  key={server.id}
+                  server={{
+                    id: server.id,
+                    name: server.name,
+                    status: server.status,
+                    scheduleLabel: humanCron(server.schedule_cron),
+                    quotaLabel: quota
+                      ? quota.tier === "free"
+                        ? quota.remaining > 0
+                          ? "1 free generation"
+                          : "Free generation used"
+                        : `${quota.remaining}/${quota.limit} on-demand`
+                      : undefined,
+                  }}
+                />
+              );
+            })}
+          </div>
+        </aside>
       </div>
-
-      <div className="grid gap-3">
-        {servers.map((server, i) => {
-          const quota = quotas[server.id];
-          const isGenerating = generatingId === server.id;
-          const exhausted = quota && quota.remaining <= 0;
-          const isFree = quota?.tier === "free";
-          const accent = accentByIndex[i % accentByIndex.length];
-
-          return (
-            <Card key={server.id} className="overflow-hidden">
-              <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-start gap-3 min-w-0">
-                  <span
-                    className={cn(
-                      "mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-pill text-sm font-bold text-ink-inverted",
-                      accent,
-                    )}
-                  >
-                    {server.name?.[0]?.toUpperCase() ?? "?"}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="truncate text-base font-semibold">{server.name}</h3>
-                      <Badge variant={server.status === "active" ? "default" : "secondary"}>
-                        {server.status}
-                      </Badge>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-dark">
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {humanCron(server.schedule_cron)}
-                      </span>
-                      {quota && (
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-pill border px-2 py-0.5",
-                            isFree
-                              ? exhausted
-                                ? "border-warning/40 text-warning"
-                                : "border-positive/40 text-positive"
-                              : "border-ink-lighter",
-                          )}
-                        >
-                          {isFree
-                            ? exhausted
-                              ? "Free generation used"
-                              : "1 free generation available"
-                            : `${quota.remaining}/${quota.limit} on-demand`}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleGenerate(server.id)}
-                    disabled={isGenerating || exhausted}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                        Generating
-                      </>
-                    ) : exhausted ? (
-                      isFree ? "Subscribe to generate" : "Limit reached"
-                    ) : (
-                      <>
-                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                        {isFree ? "Try free" : "Generate now"}
-                      </>
-                    )}
-                  </Button>
-                  <Link href={`/dashboard/servers/${server.id}/newsletters`}>
-                    <Button variant="ghost" size="sm">
-                      <FileText className="mr-1.5 h-3.5 w-3.5" />
-                      Drafts
-                    </Button>
-                  </Link>
-                  <Link href={`/dashboard/servers/${server.id}`}>
-                    <Button variant="ghost" size="sm">
-                      <SettingsIcon className="mr-1.5 h-3.5 w-3.5" />
-                      Settings
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
       {generateError && (
         <GenerationError
           error={generateError}
