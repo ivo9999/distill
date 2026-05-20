@@ -21,12 +21,6 @@ export const KEYBOARD_SHORTCUTS: Record<string, ShortcutDefinition> = {
     description: "Open command palette",
     category: "Navigation",
   },
-  NAV: {
-    key: "j",
-    modifiers: ["meta"],
-    description: "Open navigation menu",
-    category: "Navigation",
-  },
   HELP: {
     key: "?",
     modifiers: [],

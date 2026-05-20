@@ -7,10 +7,6 @@ import { Server as ServerIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
-import {
-  GenerationError,
-  type GenerationErrorState,
-} from "@/components/generation-error";
 import { PageHeader } from "@/components/features/page-header";
 import { NewsletterFeed, type NewsletterFeedItem } from "@/components/features/newsletter-feed";
 import { ServerCard } from "@/components/features/server-card";
@@ -61,9 +57,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generateError, setGenerateError] = useState<
-    (GenerationErrorState & { id: string }) | null
-  >(null);
   const [quotas, setQuotas] = useState<Record<string, Quota>>({});
   const [drafts, setDrafts] = useState<DraftWithDate[]>([]);
 
@@ -138,52 +131,6 @@ export default function DashboardPage() {
     );
   }
 
-  const handleGenerate = async (serverId: string) => {
-    setGenerateError(null);
-    let data: {
-      saved?: boolean;
-      id?: string;
-      error?: string;
-      tier?: string;
-      category?: GenerationErrorState["category"];
-    } = {};
-    try {
-      const res = await fetch(`/api/proxy/servers/${serverId}/generate-now`, {
-        method: "POST",
-      });
-      try {
-        data = await res.json();
-      } catch {
-        data = { error: "Unexpected response from server", category: "internal" };
-      }
-      if (res.ok && data.saved && data.id) {
-        setQuotas((prev) => {
-          const q = prev[serverId];
-          if (q)
-            return {
-              ...prev,
-              [serverId]: { ...q, used: q.used + 1, remaining: q.remaining - 1 },
-            };
-          return prev;
-        });
-        router.push(`/dashboard/servers/${serverId}/newsletters/${data.id}`);
-        return;
-      }
-    } catch {
-      data = {
-        error: "Couldn't reach the generation service. Check your connection and try again.",
-        category: "internal",
-      };
-    }
-    setGenerateError({
-      id: serverId,
-      message: data.error || "Failed to generate. Please try again.",
-      category: data.category,
-      tier: data.tier,
-      serverId,
-    });
-  };
-
   return (
     <div>
       <PageHeader
@@ -229,17 +176,6 @@ export default function DashboardPage() {
           </div>
         </aside>
       </div>
-      {generateError && (
-        <GenerationError
-          error={generateError}
-          onRetry={
-            generateError.category === "timeout" || generateError.category === "internal"
-              ? () => handleGenerate(generateError.id)
-              : undefined
-          }
-          onDismiss={() => setGenerateError(null)}
-        />
-      )}
     </div>
   );
 }

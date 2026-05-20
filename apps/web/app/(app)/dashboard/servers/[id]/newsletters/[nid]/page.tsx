@@ -531,7 +531,7 @@ export default function NewsletterEditorPage() {
                   onClick={() => setSubject(o.text)}
                   className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
                     subject === o.text
-                      ? "border-foreground bg-muted"
+                      ? "border-ink bg-ink-lightest"
                       : "border-ink-lighter hover:border-ink-medium"
                   }`}
                 >
@@ -560,14 +560,14 @@ export default function NewsletterEditorPage() {
               onClick={() => setSelectedPlatform(platform.id)}
               className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
                 selectedPlatform === platform.id
-                  ? "border-foreground bg-muted"
-                  : "border-border hover:border-foreground/30"
+                  ? "border-ink bg-ink-lightest"
+                  : "border-ink-lighter hover:border-ink-medium"
               }`}
             >
               <span className="font-medium text-sm">
                 {platform.name}
               </span>
-              <span className="block text-xs text-muted-foreground mt-0.5">
+              <span className="block text-xs text-ink-medium mt-0.5">
                 {platform.desc}
               </span>
             </button>
@@ -716,7 +716,7 @@ export default function NewsletterEditorPage() {
                 fromName={serverName || "Your community"}
               />
             ) : (
-              <article className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-foreground prose-strong:text-foreground">
+              <article className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-p:leading-relaxed prose-p:text-ink-medium prose-a:text-ink prose-strong:text-ink">
                 {/*
                   Strip the story-id markers before rendering.
                   React-markdown handles HTML comments natively
