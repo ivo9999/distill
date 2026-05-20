@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "@fontsource/adwaita-sans/400.css";
@@ -44,6 +45,12 @@ export default function RootLayout({
           {children}
           <Toaster position="top-right" richColors />
         </ThemeProvider>
+        <Script
+          defer
+          src="https://analiz.dev/t.js"
+          data-project="proj_eV8yXZTGeb13"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
