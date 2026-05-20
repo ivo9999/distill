@@ -1,17 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/features/page-header";
+import { SettingsCard } from "@/components/features/settings-card";
 
 interface Integration {
   id: string;
@@ -110,99 +105,92 @@ export default function IntegrationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Integrations</h2>
-        <p className="text-ink-dark mt-1">
-          Connect your newsletter platform to publish directly from Distill.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Settings"
+        title="Integrations"
+        description="Connect your newsletter publishing platform to publish directly from Distill."
+      />
 
-      <div className="grid gap-4">
+      <div className="space-y-8">
         {integrations.map((integration) => (
-          <Card key={integration.id}>
-            <CardHeader className="flex flex-row items-start justify-between">
-              <div>
-                <CardTitle className="text-lg">{integration.name}</CardTitle>
-                <CardDescription className="mt-1">
-                  {integration.description}
-                </CardDescription>
-              </div>
-              <Badge
-                variant={integration.connected ? "default" : "secondary"}
-              >
+          <SettingsCard
+            key={integration.id}
+            title={integration.name}
+            description={integration.description}
+            action={
+              <Badge variant={integration.connected ? "default" : "secondary"}>
                 {integration.connected ? "Connected" : "Not connected"}
               </Badge>
-            </CardHeader>
-            <CardContent>
-              {integration.connected ? (
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-ink-dark">
-                    Your {integration.name} account is connected and ready to
-                    publish.
-                  </p>
+            }
+          >
+            {integration.connected ? (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-ink-medium">
+                  Your {integration.name} account is connected and ready to
+                  publish.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => handleDisconnect(integration.id)}
+                  disabled={saving === integration.id}
+                >
+                  {saving === integration.id
+                    ? "Disconnecting..."
+                    : "Disconnect"}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor={`${integration.id}-api-key`}>
+                      API Key
+                    </Label>
+                    <Input
+                      id={`${integration.id}-api-key`}
+                      type="password"
+                      placeholder="Enter your API key"
+                      value={integration.apiKey}
+                      onChange={(e) =>
+                        updateIntegration(integration.id, {
+                          apiKey: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`${integration.id}-pub-id`}>
+                      Publication ID
+                    </Label>
+                    <Input
+                      id={`${integration.id}-pub-id`}
+                      placeholder="Enter your publication ID"
+                      value={integration.publicationId}
+                      onChange={(e) =>
+                        updateIntegration(integration.id, {
+                          publicationId: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
                   <Button
-                    variant="outline"
-                    onClick={() => handleDisconnect(integration.id)}
-                    disabled={saving === integration.id}
+                    onClick={() => handleConnect(integration.id)}
+                    disabled={
+                      saving === integration.id ||
+                      !integration.apiKey ||
+                      !integration.publicationId
+                    }
                   >
                     {saving === integration.id
-                      ? "Disconnecting..."
-                      : "Disconnect"}
+                      ? "Connecting..."
+                      : "Connect"}
                   </Button>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor={`${integration.id}-api-key`}>
-                        API Key
-                      </Label>
-                      <Input
-                        id={`${integration.id}-api-key`}
-                        type="password"
-                        placeholder="Enter your API key"
-                        value={integration.apiKey}
-                        onChange={(e) =>
-                          updateIntegration(integration.id, {
-                            apiKey: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`${integration.id}-pub-id`}>
-                        Publication ID
-                      </Label>
-                      <Input
-                        id={`${integration.id}-pub-id`}
-                        placeholder="Enter your publication ID"
-                        value={integration.publicationId}
-                        onChange={(e) =>
-                          updateIntegration(integration.id, {
-                            publicationId: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => handleConnect(integration.id)}
-                      disabled={
-                        saving === integration.id ||
-                        !integration.apiKey ||
-                        !integration.publicationId
-                      }
-                    >
-                      {saving === integration.id
-                        ? "Connecting..."
-                        : "Connect"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            )}
+          </SettingsCard>
         ))}
       </div>
     </div>
