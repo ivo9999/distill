@@ -42,6 +42,7 @@ interface DiscordChannel {
 interface DiscordGuild {
   id: string;
   name: string;
+  icon?: string | null;
 }
 
 interface Server {
@@ -80,10 +81,17 @@ export function OnboardingClient({ discordBotUrl }: { discordBotUrl: string }) {
     setSetupError(null);
     let server = existing.find((s) => s.discord_guild_id === guild.id) ?? null;
     if (!server) {
+      const iconUrl = guild.icon
+        ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`
+        : undefined;
       const createRes = await fetch("/api/proxy/servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: guild.name, discord_guild_id: guild.id }),
+        body: JSON.stringify({
+          name: guild.name,
+          discord_guild_id: guild.id,
+          ...(iconUrl ? { icon_url: iconUrl } : {}),
+        }),
       });
       if (createRes.ok) {
         server = await createRes.json();
