@@ -2,13 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from "@/components/features/page-header";
+import { SettingsCard } from "@/components/features/settings-card";
 
 const dayOptions = [
   { label: "Sunday", value: "0" },
@@ -179,58 +174,75 @@ export default function ServerSettingsPage() {
   const hourLabel = hourOptions.find((h) => h.value === scheduleHour)?.label ?? "6pm UTC";
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">{serverName}</h2>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Server Settings</CardTitle>
-          <CardDescription>
-            Configure how Distill processes your Discord server.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Community Type */}
-          <div className="space-y-2">
-            <Label htmlFor="community-type">Community Type</Label>
-            <Input
-              id="community-type"
-              placeholder="e.g., Developer community, Gaming guild, Startup team"
-              value={communityType}
-              onChange={(e) => setCommunityType(e.target.value)}
-            />
-            <p className="text-xs text-ink-dark">
-              Helps the AI understand the tone and context of your community.
-            </p>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Server"
+        title={serverName}
+        description={`Newsletter every ${dayLabel} at ${hourLabel}`}
+        action={
+          <div className="flex items-center gap-3">
+            {saved && <span className="text-sm text-positive">Saved!</span>}
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save settings"}
+            </Button>
           </div>
+        }
+      />
 
-          {/* Voice sample — paste a past newsletter for the AI to
-              mirror. Optional; if blank, Pass2 falls back to its
-              default voice rules. This is the single biggest
-              perceived-quality lever on first run, so we surface it
-              with a longer help line than the other fields. */}
-          <div className="space-y-2">
-            <div className="flex items-end justify-between">
-              <Label htmlFor="voice-sample">Voice sample (optional)</Label>
-              <span className="text-xs text-ink-dark">
-                {voiceSample.length}/5000
-              </span>
+      <div className="space-y-8">
+        {/* Voice & Identity */}
+        <SettingsCard
+          title="Voice & Identity"
+          description="Help the AI understand your community and match its writing style."
+        >
+          <div className="space-y-6">
+            {/* Community Type */}
+            <div className="space-y-2">
+              <Label htmlFor="community-type">Community Type</Label>
+              <Input
+                id="community-type"
+                placeholder="e.g., Developer community, Gaming guild, Startup team"
+                value={communityType}
+                onChange={(e) => setCommunityType(e.target.value)}
+              />
+              <p className="text-xs text-ink-medium">
+                Helps the AI understand the tone and context of your community.
+              </p>
             </div>
-            <Textarea
-              id="voice-sample"
-              placeholder={`Paste a past newsletter, blog post, or anything you've written for this audience. The AI will match its rhythm and warmth — without copying phrases.\n\nLeave blank for default voice.`}
-              value={voiceSample}
-              onChange={(e) => setVoiceSample(e.target.value.slice(0, 5000))}
-              rows={6}
-              className="font-mono text-xs"
-            />
-            <p className="text-xs text-ink-dark">
-              The AI mirrors voice from concrete examples better than from
-              descriptions. One or two paragraphs of your own writing is plenty.
-            </p>
-          </div>
 
-          {/* Schedule — Day + Hour */}
+            {/* Voice sample — paste a past newsletter for the AI to
+                mirror. Optional; if blank, Pass2 falls back to its
+                default voice rules. This is the single biggest
+                perceived-quality lever on first run, so we surface it
+                with a longer help line than the other fields. */}
+            <div className="space-y-2">
+              <div className="flex items-end justify-between">
+                <Label htmlFor="voice-sample">Voice sample (optional)</Label>
+                <span className="text-xs text-ink-medium">
+                  {voiceSample.length}/5000
+                </span>
+              </div>
+              <Textarea
+                id="voice-sample"
+                placeholder={`Paste a past newsletter, blog post, or anything you've written for this audience. The AI will match its rhythm and warmth — without copying phrases.\n\nLeave blank for default voice.`}
+                value={voiceSample}
+                onChange={(e) => setVoiceSample(e.target.value.slice(0, 5000))}
+                rows={6}
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-ink-medium">
+                The AI mirrors voice from concrete examples better than from
+                descriptions. One or two paragraphs of your own writing is plenty.
+              </p>
+            </div>
+          </div>
+        </SettingsCard>
+
+        {/* Schedule */}
+        <SettingsCard
+          title="Schedule"
+          description="Distill will generate a newsletter draft every week on this day and time."
+        >
           <div className="space-y-2">
             <Label>Newsletter Schedule</Label>
             <div className="flex gap-3">
@@ -255,19 +267,15 @@ export default function ServerSettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <p className="text-xs text-ink-dark">
-              Distill will generate a newsletter draft every week on this day and time.
-            </p>
           </div>
+        </SettingsCard>
 
-          {/* Monitored Channels */}
-          <div className="space-y-2">
-            <div className="flex items-end justify-between">
-              <Label>Monitored Channels</Label>
-              <p className="text-xs text-ink-dark">
-                Mark each channel by signal — the AI weights stories accordingly.
-              </p>
-            </div>
+        {/* Channels */}
+        <SettingsCard
+          title="Channels"
+          description="Mark each channel by signal — the AI weights stories accordingly."
+        >
+          <div className="space-y-3">
             {channels.length > 0 ? (
               <ul className="space-y-1">
                 {channels.map((channel) => (
@@ -310,7 +318,7 @@ export default function ServerSettingsPage() {
                             <SelectItem key={p.value} value={p.value}>
                               <div>
                                 <div className="text-sm">{p.label}</div>
-                                <div className="text-xs text-ink-dark">{p.description}</div>
+                                <div className="text-xs text-ink-medium">{p.description}</div>
                               </div>
                             </SelectItem>
                           ))}
@@ -333,7 +341,7 @@ export default function ServerSettingsPage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-ink-dark bg-ink-lightest px-3 py-4 rounded-md text-center">
+              <p className="text-sm text-ink-medium bg-ink-lightest px-3 py-4 rounded-md text-center">
                 No channels monitored yet. Add channels below.
               </p>
             )}
@@ -343,12 +351,12 @@ export default function ServerSettingsPage() {
               </Button>
             ) : availableChannels.length > 0 ? (
               <div className="space-y-1">
-                <p className="text-xs text-ink-dark">Select a channel to monitor:</p>
+                <p className="text-xs text-ink-medium">Select a channel to monitor:</p>
                 {availableChannels.map((dc) => (
                   <button
                     key={dc.id}
                     disabled={addingChannel}
-                    className="flex items-center gap-2 w-full text-left text-sm text-ink-dark hover:bg-ink-lightest px-3 py-2 rounded-md cursor-pointer disabled:opacity-50"
+                    className="flex items-center gap-2 w-full text-left text-sm text-ink-medium hover:bg-ink-lightest px-3 py-2 rounded-md cursor-pointer disabled:opacity-50"
                     onClick={() => handleAddChannel(dc)}
                   >
                     <span className="text-ink-medium">#</span>
@@ -361,16 +369,8 @@ export default function ServerSettingsPage() {
               <p className="text-xs text-ink-medium">All channels are already monitored.</p>
             )}
           </div>
-
-          {/* Save */}
-          <div className="flex items-center justify-end gap-3">
-            {saved && <span className="text-sm text-positive">Saved!</span>}
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </SettingsCard>
+      </div>
     </div>
   );
 }
