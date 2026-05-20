@@ -116,17 +116,38 @@ export function OnboardingClient({ discordBotUrl }: { discordBotUrl: string }) {
     setStep(2);
 
     // 1. Guilds the bot is in.
-    const botGuildsRes = await fetch("/api/proxy/discord/bot-guilds");
-    const botGuilds = await botGuildsRes.json();
+    let botGuilds: unknown;
+    try {
+      const botGuildsRes = await fetch("/api/proxy/discord/bot-guilds");
+      botGuilds = await botGuildsRes.json();
+    } catch {
+      botGuilds = null;
+    }
     if (!Array.isArray(botGuilds) || botGuilds.length === 0) {
+      // No guilds, or the lookup failed. The empty-state card renders.
       setLoadingChannels(false);
       return;
     }
 
-    // 2. Existing server records.
-    const serversRes = await fetch("/api/proxy/servers");
-    const serversRaw = await serversRes.json();
-    const servers: Server[] = Array.isArray(serversRaw) ? serversRaw : [];
+    // 2. Existing server records. A FAILED fetch must NOT be treated as
+    //    "zero servers" — that would make every bot guild look
+    //    unconfigured and surface already-set-up servers in the picker.
+    //    Abort with an error instead.
+    let servers: Server[];
+    try {
+      const serversRes = await fetch("/api/proxy/servers");
+      const serversRaw = await serversRes.json();
+      if (!serversRes.ok || !Array.isArray(serversRaw)) {
+        throw new Error("bad response");
+      }
+      servers = serversRaw;
+    } catch {
+      setSetupError(
+        "Couldn't load your existing servers. Please try again in a moment.",
+      );
+      setLoadingChannels(false);
+      return;
+    }
 
     // 3. Prefer guilds that aren't set up yet — that's the one the user
     //    just added. If every bot guild already has a server, fall back
