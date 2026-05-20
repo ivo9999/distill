@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +22,8 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/features/page-header";
+import { MarkdownToolbar } from "@/components/features/markdown-toolbar";
+import { NewsletterMarkdown } from "@/components/features/newsletter-markdown";
 
 type RegenerateDirective = "tighter" | "funnier" | "more_detail" | "rewrite_from_messages";
 
@@ -182,50 +183,7 @@ function EmailFramePreview({ content, fromName }: { content: string; fromName: s
             lineHeight: "1.6",
           }}
         >
-          <ReactMarkdown
-            components={{
-              h2: (props) => (
-                <h2
-                  {...props}
-                  style={{
-                    fontFamily:
-                      'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-                    fontSize: "22px",
-                    fontWeight: 600,
-                    marginTop: "32px",
-                    marginBottom: "12px",
-                    lineHeight: 1.3,
-                  }}
-                />
-              ),
-              p: (props) => (
-                <p {...props} style={{ margin: "0 0 16px 0", color: "#1a1a1a" }} />
-              ),
-              a: (props) => (
-                <a
-                  {...props}
-                  style={{ color: "#1d4ed8", textDecoration: "underline" }}
-                />
-              ),
-              em: (props) => (
-                <em {...props} style={{ color: "#4b5563", fontStyle: "italic" }} />
-              ),
-              strong: (props) => (
-                <strong {...props} style={{ color: "#0f172a" }} />
-              ),
-              ul: (props) => (
-                <ul
-                  {...props}
-                  style={{ paddingLeft: "24px", margin: "0 0 16px 0" }}
-                />
-              ),
-              li: (props) => (
-                <li {...props} style={{ margin: "0 0 4px 0" }} />
-              ),
-            }}
-          >
-            {content}
-          </ReactMarkdown>
+          <NewsletterMarkdown content={content} />
         </article>
       </div>
 
@@ -268,6 +226,7 @@ export default function NewsletterEditorPage() {
   const newsletterId = params.nid as string;
 
   const [content, setContent] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -686,16 +645,27 @@ export default function NewsletterEditorPage() {
             tab === "email" ? "hidden" : tab === "preview" ? "hidden md:flex" : ""
           }`}
         >
-          <div className="px-4 py-2 border-b border-ink-lighter text-[11px] font-bold uppercase tracking-widest text-ink-medium hidden md:block">
-            Markdown
+          <div className="flex items-center justify-between gap-2 px-4 py-1.5 border-b border-ink-lighter hidden md:flex">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-ink-medium">
+              Markdown
+            </span>
+            <MarkdownToolbar
+              textareaRef={textareaRef}
+              value={content}
+              onChange={setContent}
+            />
           </div>
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="flex-1 w-full p-4 font-mono text-sm leading-relaxed resize-none bg-transparent outline-none placeholder:text-ink-medium"
             placeholder="Write your newsletter in markdown..."
             spellCheck={false}
           />
+          <div className="px-4 py-1.5 border-t border-ink-lighter text-[11px] text-ink-medium hidden md:block">
+            {content.trim() ? content.trim().split(/\s+/).length : 0} words
+          </div>
         </div>
 
         {/* Preview pane */}
@@ -716,16 +686,10 @@ export default function NewsletterEditorPage() {
                 fromName={serverName || "Your community"}
               />
             ) : (
-              <article className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-p:leading-relaxed prose-p:text-ink-medium prose-a:text-ink prose-strong:text-ink">
-                {/*
-                  Strip the story-id markers before rendering.
-                  React-markdown handles HTML comments natively
-                  (they're parsed as raw blocks) but they'd render as
-                  visible text, so easier to just strip.
-                */}
-                <ReactMarkdown>
-                  {content.replace(/<!--\s*story:[^>]*-->\s*/g, "")}
-                </ReactMarkdown>
+              <article className="mx-auto max-w-[680px] text-[15px] leading-relaxed text-ink">
+                <NewsletterMarkdown
+                  content={content.replace(/<!--\s*story:[^>]*-->\s*/g, "")}
+                />
               </article>
             )}
 
