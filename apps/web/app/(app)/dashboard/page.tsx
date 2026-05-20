@@ -42,6 +42,7 @@ interface Server {
   status: string;
   schedule_cron: string;
   community_type: string | null;
+  icon_url?: string | null;
 }
 
 interface Quota {
@@ -161,6 +162,7 @@ export default function DashboardPage() {
                     id: server.id,
                     name: server.name,
                     status: server.status,
+                    iconUrl: server.icon_url || undefined,
                     scheduleLabel: humanCron(server.schedule_cron),
                     quotaLabel: quota
                       ? quota.tier === "free"
