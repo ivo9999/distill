@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,15 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/features/page-header";
 import { SettingsCard } from "@/components/features/settings-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { NewsletterFeed } from "@/components/features/newsletter-feed";
 import type { NewsletterFeedItem } from "@/components/features/newsletter-feed";
 import { formatDistanceToNow } from "date-fns";
@@ -104,6 +113,7 @@ function weightToPreset(w: number | undefined): string {
 export default function ServerSettingsPage() {
   const params = useParams();
   const serverId = params.id as string;
+  const router = useRouter();
 
   const [serverName, setServerName] = useState("");
   const [guildId, setGuildId] = useState("");
@@ -119,6 +129,10 @@ export default function ServerSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
   const [newslettersLoading, setNewslettersLoading] = useState(true);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removeConfirm, setRemoveConfirm] = useState("");
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -155,6 +169,25 @@ export default function ServerSettingsPage() {
       })
       .catch(() => setNewslettersLoading(false));
   }, [serverId]);
+
+  const handleRemoveServer = async () => {
+    setRemoving(true);
+    setRemoveError(null);
+    try {
+      const res = await fetch(`/api/proxy/servers/${serverId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.deleted) {
+        router.push("/dashboard");
+        return;
+      }
+      setRemoveError(data.error || "Failed to remove the server. Please try again.");
+    } catch {
+      setRemoveError("Couldn't reach the server. Please try again.");
+    }
+    setRemoving(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -442,6 +475,82 @@ export default function ServerSettingsPage() {
               )}
             />
           )}
+        </SettingsCard>
+
+        {/* Danger zone — permanently remove this server. */}
+        <SettingsCard title="Danger zone">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-negative">
+                Remove this server
+              </p>
+              <p className="text-xs text-ink-medium">
+                Permanently deletes this server, its channels, and its
+                newsletter drafts. This cannot be undone.
+              </p>
+            </div>
+            <Dialog
+              open={removeOpen}
+              onOpenChange={(open) => {
+                setRemoveOpen(open);
+                if (!open) {
+                  setRemoveConfirm("");
+                  setRemoveError(null);
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  Remove server
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Remove "{serverName}"?</DialogTitle>
+                  <DialogDescription>
+                    This permanently deletes the server, its channels,
+                    and every newsletter draft. If this server has
+                    already used its free generation, that stays used —
+                    re-adding the Discord server will not reset it.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <p className="text-sm text-ink-medium">
+                    Type{" "}
+                    <span className="font-mono font-bold text-ink">
+                      {serverName}
+                    </span>{" "}
+                    to confirm.
+                  </p>
+                  <Input
+                    value={removeConfirm}
+                    onChange={(e) => setRemoveConfirm(e.target.value)}
+                    placeholder={serverName}
+                    autoComplete="off"
+                  />
+                  {removeError && (
+                    <p className="text-xs text-negative">{removeError}</p>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setRemoveOpen(false)}
+                    disabled={removing}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleRemoveServer}
+                    disabled={removing || removeConfirm !== serverName}
+                  >
+                    {removing ? "Removing…" : "Remove server"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </SettingsCard>
       </div>
     </div>
