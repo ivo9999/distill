@@ -68,6 +68,9 @@ func main() {
 		Queries:  queries,
 		DMSender: bot,
 	}
+	retentionWorker := &jobs.MessageRetentionWorker{
+		Queries: queries,
+	}
 	// Scheduler worker -- we set the Inserter after creating the client.
 	schedWorker := &jobs.SchedulerWorker{
 		Queries: queries,
@@ -92,6 +95,7 @@ func main() {
 	river.AddWorker(workers, publishWorker)
 	river.AddWorker(workers, trialWorker)
 	river.AddWorker(workers, schedWorker)
+	river.AddWorker(workers, retentionWorker)
 
 	// Create the River client.
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
@@ -111,6 +115,13 @@ func main() {
 				river.PeriodicInterval(24*time.Hour),
 				func() (river.JobArgs, *river.InsertOpts) {
 					return jobs.TrialReminderArgs{}, nil
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return jobs.MessageRetentionArgs{}, nil
 				},
 				nil,
 			),
