@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { google } from "./client";
+import { modelFor } from "./client";
 import type { SourceSection } from "./pipeline";
 
 // Pre-defined rewrite directives. Each maps to a short instruction
@@ -86,7 +86,7 @@ export async function runRegenerateSection(
     .replace("{{SOURCE_MESSAGES}}", sourceMessagesText);
 
   const result = await generateText({
-    model: google(process.env.AI_MODEL_PASS2 ?? "gemini-2.5-pro"),
+    model: modelFor(process.env.AI_MODEL_PASS2 ?? "claude-haiku-4-5"),
     prompt,
   });
 

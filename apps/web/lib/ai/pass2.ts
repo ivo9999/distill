@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { google } from "./client";
+import { modelFor } from "./client";
 import type { Story, Message } from "./pass1";
 
 const PASS2_PROMPT = `You are writing a weekly newsletter for {{COMMUNITY_NAME}}. Your job is to turn this week's top community moments into a draft the community owner can edit and publish.
@@ -80,7 +80,7 @@ export async function runPass2(
     );
 
   const result = await generateText({
-    model: google(process.env.AI_MODEL_PASS2 ?? "gemini-2.5-pro"),
+    model: modelFor(process.env.AI_MODEL_PASS2 ?? "claude-haiku-4-5"),
     prompt,
   });
 

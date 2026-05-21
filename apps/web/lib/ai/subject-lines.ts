@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { google } from "./client";
+import { modelFor } from "./client";
 
 // Three subject-line candidates with a one-line rationale each.
 // The rationale exists so the operator can compare like-with-like
@@ -75,7 +75,7 @@ export async function runSubjectLines(
   ).replace("{{NEWSLETTER}}", cleaned);
 
   const result = await generateObject({
-    model: google(process.env.AI_MODEL_PASS2 ?? "gemini-2.5-pro"),
+    model: modelFor(process.env.AI_MODEL_PASS2 ?? "claude-haiku-4-5"),
     schema: SubjectLinesOutputSchema,
     prompt,
   });
