@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/features/page-header";
 import { SettingsCard } from "@/components/features/settings-card";
+import { NewsletterFeed } from "@/components/features/newsletter-feed";
+import type { NewsletterFeedItem } from "@/components/features/newsletter-feed";
+import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 
 const dayOptions = [
   { label: "Sunday", value: "0" },
@@ -49,6 +53,23 @@ interface Channel {
   name: string;
   discord_channel_id: string;
   weight?: number;
+}
+
+interface Newsletter {
+  id: string;
+  status: string;
+  created_at: string;
+  draft_markdown: string;
+  edited_markdown: string | null;
+}
+
+// Title for a newsletter draft — first ## heading of the (edited or
+// raw) markdown. Mirrors the newsletters list page's extractTitle so
+// both views label drafts identically.
+function extractTitle(nl: Newsletter): string {
+  const md = nl.edited_markdown || nl.draft_markdown || "";
+  const match = md.match(/^##\s+(.+)$/m);
+  return match ? match[1] : "Untitled Newsletter";
 }
 
 // Three weight presets the UI exposes. The API accepts any value in
@@ -96,6 +117,8 @@ export default function ServerSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
+  const [newslettersLoading, setNewslettersLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -120,6 +143,17 @@ export default function ServerSettingsPage() {
       setLoading(false);
     };
     loadData();
+
+    // Recent newsletters for the "Newsletters" section. A failed fetch
+    // falls back to an empty list — non-fatal, the rest of the page
+    // still works.
+    fetch(`/api/proxy/servers/${serverId}/newsletters`)
+      .then((r) => r.json())
+      .then((data) => {
+        setNewsletters(Array.isArray(data) ? data : []);
+        setNewslettersLoading(false);
+      })
+      .catch(() => setNewslettersLoading(false));
   }, [serverId]);
 
   const handleSave = async () => {
@@ -369,6 +403,45 @@ export default function ServerSettingsPage() {
               <p className="text-xs text-ink-medium">All channels are already monitored.</p>
             )}
           </div>
+        </SettingsCard>
+
+        {/* Newsletters — recent drafts for this server, with a link to
+            the full archive. */}
+        <SettingsCard
+          title="Newsletters"
+          description="Recent newsletter drafts generated for this server."
+          action={
+            <Link
+              href={`/dashboard/servers/${serverId}/newsletters`}
+              className="text-sm font-semibold text-link hover:underline"
+            >
+              View all →
+            </Link>
+          }
+        >
+          {newslettersLoading ? (
+            <p className="text-sm text-ink-medium">Loading…</p>
+          ) : newsletters.length === 0 ? (
+            <p className="text-sm text-ink-medium">
+              No newsletters generated yet.
+            </p>
+          ) : (
+            <NewsletterFeed
+              items={newsletters.slice(0, 5).map(
+                (nl): NewsletterFeedItem => ({
+                  id: nl.id,
+                  serverId,
+                  serverName,
+                  title: extractTitle(nl),
+                  status: nl.status,
+                  updatedLabel: formatDistanceToNow(
+                    new Date(nl.created_at),
+                    { addSuffix: true },
+                  ),
+                }),
+              )}
+            />
+          )}
         </SettingsCard>
       </div>
     </div>
