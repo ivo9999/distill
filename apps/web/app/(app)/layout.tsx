@@ -29,7 +29,7 @@ export default async function AppLayout({
         subscriptionStatus: s.subscriptionStatus,
       }}
     >
-      {!isActive && <SubscribeBanner />}
+      {!isActive && <SubscribeBanner subscriptionStatus={s.subscriptionStatus} />}
       {children}
     </DashboardShell>
   );

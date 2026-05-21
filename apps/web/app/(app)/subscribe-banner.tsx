@@ -4,7 +4,11 @@ import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function SubscribeBanner() {
+export function SubscribeBanner({
+  subscriptionStatus,
+}: {
+  subscriptionStatus?: string;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,11 +38,14 @@ export function SubscribeBanner() {
         <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand-warm" />
         <div>
           <p className="text-sm font-medium text-ink">
-            You're on the free plan
+            {subscriptionStatus === "past_due"
+              ? "Your payment is past due"
+              : "You're on the free plan"}
           </p>
           <p className="text-xs text-ink-dark">
-            1 generation per server, no publishing. Subscribe to unlock weekly
-            generations and publishing to Beehiiv, ConvertKit, or Ghost.
+            {subscriptionStatus === "past_due"
+              ? "Your payment is past due — update your billing to keep Pro features."
+              : "1 generation per server, no publishing. Subscribe to unlock weekly generations and publishing to Beehiiv, ConvertKit, or Ghost."}
           </p>
         </div>
       </div>
@@ -49,7 +56,11 @@ export function SubscribeBanner() {
           disabled={loading}
           size="sm"
         >
-          {loading ? "Redirecting..." : "Subscribe — $49/mo"}
+          {loading
+            ? "Redirecting..."
+            : subscriptionStatus === "past_due"
+              ? "Update billing"
+              : "Subscribe — $49/mo"}
         </Button>
         {error && (
           <p className="text-xs text-negative md:text-right">{error}</p>

@@ -53,7 +53,11 @@ func (w *GenerateNewsletterWorker) Work(ctx context.Context, job *river.Job[Gene
 			return nil
 		}
 	default:
-		slog.Warn("user subscription not active, skipping", "status", user.SubscriptionStatus)
+		reason := "not subscribed"
+		if user.SubscriptionStatus == "past_due" {
+			reason = "payment past due"
+		}
+		slog.Warn("skipping scheduled generation", "reason", reason, "status", user.SubscriptionStatus)
 		return nil
 	}
 
