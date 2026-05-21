@@ -274,12 +274,12 @@ func triggerGenerate(s *Server) http.HandlerFunc {
 				return
 			}
 			if user.SubscriptionStatus != "active" {
-				guildUsed, err := s.Queries.CountOnDemandEverForGuild(r.Context(), server.DiscordGuildID)
+				used, err := s.Queries.GuildFreeGenerationUsed(r.Context(), server.DiscordGuildID)
 				if err != nil {
-					writeError(w, http.StatusInternalServerError, "failed to count guild generations")
+					writeError(w, http.StatusInternalServerError, "failed to check guild quota")
 					return
 				}
-				if guildUsed >= 1 {
+				if used {
 					writeError(w, http.StatusPaymentRequired, "free tier limit reached: subscribe to generate more")
 					return
 				}

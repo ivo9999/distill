@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -75,12 +76,12 @@ func createNewsletter(s *Server) http.HandlerFunc {
 				return
 			}
 			if user.SubscriptionStatus != "active" {
-				guildUsed, err := s.Queries.CountOnDemandEverForGuild(r.Context(), server.DiscordGuildID)
+				used, err := s.Queries.GuildFreeGenerationUsed(r.Context(), server.DiscordGuildID)
 				if err != nil {
-					writeError(w, http.StatusInternalServerError, "failed to count guild generations")
+					writeError(w, http.StatusInternalServerError, "failed to check guild quota")
 					return
 				}
-				if guildUsed >= 1 {
+				if used {
 					writeError(w, http.StatusPaymentRequired, "free tier limit reached: subscribe to generate more")
 					return
 				}
@@ -117,6 +118,20 @@ func createNewsletter(s *Server) http.HandlerFunc {
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to create newsletter")
 			return
+		}
+
+		// Record the free generation against the Discord guild so it
+		// survives a server delete + re-add. Free-tier on-demand only;
+		// idempotent (ON CONFLICT DO NOTHING). Non-fatal — the
+		// newsletter is already saved — so log-and-continue.
+		if req.IsOnDemand && !s.isAdminUUID(userID) {
+			ledgerUser, uerr := s.Queries.GetUserByID(r.Context(), userID)
+			if uerr == nil && ledgerUser.SubscriptionStatus != "active" {
+				if merr := s.Queries.MarkGuildFreeGenerationUsed(r.Context(), server.DiscordGuildID); merr != nil {
+					slog.Error("failed to mark guild free generation used",
+						"guild", server.DiscordGuildID, "err", merr)
+				}
+			}
 		}
 
 		writeJSON(w, http.StatusCreated, nl)
@@ -168,17 +183,17 @@ func getGenerationQuota(s *Server) http.HandlerFunc {
 		// Counted across all servers rows that share the same discord_guild_id,
 		// so deleting and re-adding (or making a new account) does not reset it.
 		if user.SubscriptionStatus != "active" {
-			guildUsed, err := s.Queries.CountOnDemandEverForGuild(r.Context(), server.DiscordGuildID)
+			used, err := s.Queries.GuildFreeGenerationUsed(r.Context(), server.DiscordGuildID)
 			if err != nil {
-				writeError(w, http.StatusInternalServerError, "failed to count guild generations")
+				writeError(w, http.StatusInternalServerError, "failed to check guild quota")
 				return
 			}
-			remaining := int32(1) - guildUsed
-			if remaining < 0 {
-				remaining = 0
+			var usedCount, remaining int32 = 0, 1
+			if used {
+				usedCount, remaining = 1, 0
 			}
 			writeJSON(w, http.StatusOK, map[string]interface{}{
-				"used":      guildUsed,
+				"used":      usedCount,
 				"limit":     int32(1),
 				"tier":      "free",
 				"remaining": remaining,
