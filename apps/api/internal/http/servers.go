@@ -236,11 +236,20 @@ func updateServer(s *Server) http.HandlerFunc {
 		}
 		status := existing.Status
 		if req.Status != "" {
+			if req.Status != "active" && req.Status != "removed" {
+				writeError(w, http.StatusBadRequest, "invalid status")
+				return
+			}
 			status = req.Status
 		}
 		name := existing.Name
 		if req.Name != "" {
 			name = req.Name
+		}
+
+		if req.VoiceSample != nil && len(*req.VoiceSample) > 10000 {
+			writeError(w, http.StatusBadRequest, "voice sample too long (max 10000 characters)")
+			return
 		}
 
 		// voice_sample uses the sentinel pattern: omitted → keep,

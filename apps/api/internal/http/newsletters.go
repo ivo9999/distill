@@ -61,6 +61,11 @@ func createNewsletter(s *Server) http.HandlerFunc {
 			return
 		}
 
+		if len(req.Sources) > 1<<20 {
+			writeError(w, http.StatusBadRequest, "sources payload too large")
+			return
+		}
+
 		if req.DraftMarkdown == "" {
 			writeError(w, http.StatusBadRequest, "draft_markdown is required")
 			return
@@ -378,6 +383,11 @@ func updateNewsletter(s *Server) http.HandlerFunc {
 		var req updateNewsletterRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+
+		if len(req.EditedMarkdown) > 200000 {
+			writeError(w, http.StatusBadRequest, "newsletter too long")
 			return
 		}
 

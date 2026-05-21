@@ -73,6 +73,14 @@ func connectIntegration(s *Server) http.HandlerFunc {
 			return
 		}
 
+		switch req.Platform {
+		case "beehiiv", "convertkit", "ghost":
+			// ok
+		default:
+			writeError(w, http.StatusBadRequest, "unsupported platform")
+			return
+		}
+
 		encrypted, err := config.Encrypt(req.APIKey, s.Config.EncryptionKey)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to encrypt API key")
