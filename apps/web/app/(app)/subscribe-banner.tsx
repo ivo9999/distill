@@ -40,12 +40,16 @@ export function SubscribeBanner({
           <p className="text-sm font-medium text-ink">
             {subscriptionStatus === "past_due"
               ? "Your payment is past due"
-              : "You're on the free plan"}
+              : subscriptionStatus === "trialing"
+                ? "You're on a free trial"
+                : "You're on the free plan"}
           </p>
           <p className="text-xs text-ink-dark">
             {subscriptionStatus === "past_due"
               ? "Your payment is past due — update your billing to keep Pro features."
-              : "1 generation per server, no publishing. Subscribe to unlock weekly generations and publishing to Beehiiv, ConvertKit, or Ghost."}
+              : subscriptionStatus === "trialing"
+                ? "Your trial is active — subscribe before it ends to keep Pro features."
+                : "1 generation per server, no publishing. Subscribe to unlock weekly generations and publishing to Beehiiv, ConvertKit, or Ghost."}
           </p>
         </div>
       </div>
