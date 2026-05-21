@@ -2,7 +2,6 @@ package discord
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"time"
 
@@ -71,8 +70,6 @@ func (b *Bot) onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) 
 		displayName = m.Member.Nick
 	}
 
-	rawPayload, _ := json.Marshal(m.Message)
-
 	err = b.queries.InsertMessage(ctx, db.InsertMessageParams{
 		DiscordMessageID:  m.ID,
 		ServerID:          row.ServerID,
@@ -85,7 +82,7 @@ func (b *Bot) onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) 
 		SentAt:            sentAt,
 		ReactionCount:     0,
 		ReplyCount:        0,
-		RawPayload:        rawPayload,
+		RawPayload:        []byte("{}"),
 	})
 	if err != nil {
 		slog.Error("failed to insert message", "discord_message_id", m.ID, "err", err)

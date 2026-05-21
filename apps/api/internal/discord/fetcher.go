@@ -2,7 +2,6 @@ package discord
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -73,8 +72,6 @@ func (f *Fetcher) FetchChannelHistory(ctx context.Context, channelID string, lim
 				displayName = m.Member.Nick
 			}
 
-			raw, _ := json.Marshal(m)
-
 			allMessages = append(allMessages, jobs.DiscordMessage{
 				ID:                m.ID,
 				AuthorID:          m.Author.ID,
@@ -85,7 +82,7 @@ func (f *Fetcher) FetchChannelHistory(ctx context.Context, channelID string, lim
 				ReplyCount:        0,
 				ReplyToID:         replyToID,
 				ThreadID:          threadID,
-				RawPayload:        raw,
+				RawPayload:        []byte("{}"),
 			})
 		}
 
