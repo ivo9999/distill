@@ -68,6 +68,11 @@ type Optout struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
+type ProcessedStripeEvent struct {
+	EventID     string             `json:"event_id"`
+	ProcessedAt pgtype.Timestamptz `json:"processed_at"`
+}
+
 type PublisherConnection struct {
 	ID              pgtype.UUID        `json:"id"`
 	UserID          pgtype.UUID        `json:"user_id"`
