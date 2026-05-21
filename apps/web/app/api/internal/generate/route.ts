@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { timingSafeEqual } from "node:crypto";
 import { runPipeline, type Message } from "@/lib/ai/pipeline";
 
 const RequestSchema = z.object({
@@ -24,9 +25,18 @@ const RequestSchema = z.object({
   ),
 });
 
+// Constant-time bearer-token check. Length-guards first (timingSafeEqual
+// throws on unequal lengths), so a wrong-length token fails fast without
+// leaking timing on the compare itself.
+function validInternalKey(authHeader: string | null): boolean {
+  const expected = `Bearer ${process.env.INTERNAL_API_KEY ?? ""}`;
+  if (!authHeader || authHeader.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected));
+}
+
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.INTERNAL_API_KEY}`) {
+  if (!validInternalKey(authHeader)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
