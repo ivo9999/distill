@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { google } from "./client";
+import { modelFor } from "./client";
 
 export const StorySchema = z.object({
   story_id: z.string(),
@@ -94,7 +94,7 @@ export async function runPass1(
     .replace("{{MESSAGES_JSON}}", JSON.stringify(messagesForPrompt, null, 2));
 
   const result = await generateObject({
-    model: google(process.env.AI_MODEL_PASS1 ?? "gemini-2.5-flash"),
+    model: modelFor(process.env.AI_MODEL_PASS1 ?? "gemini-2.5-flash-lite"),
     schema: Pass1OutputSchema,
     prompt,
   });
