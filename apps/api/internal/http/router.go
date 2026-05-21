@@ -14,6 +14,7 @@ import (
 	"github.com/sislelabs/distill/apps/api/internal/config"
 	"github.com/sislelabs/distill/apps/api/internal/db"
 	"github.com/sislelabs/distill/apps/api/internal/llmclient"
+	"github.com/sislelabs/distill/apps/api/internal/ratelimit"
 )
 
 // Server holds dependencies for the HTTP handlers.
@@ -23,6 +24,7 @@ type Server struct {
 	Config        *config.Config
 	LLM           *llmclient.Client
 	RiverClient   *river.Client[pgx.Tx]
+	RateLimiter   *ratelimit.Limiter
 }
 
 // NewRouter creates a chi router with all routes registered.
@@ -46,6 +48,7 @@ func NewRouter(s *Server) http.Handler {
 	// Authenticated routes
 	r.Group(func(r chi.Router) {
 		r.Use(auth.Middleware)
+		r.Use(s.RateLimiter.Middleware)
 
 		// Users
 		r.Get("/api/me", getMe(s))

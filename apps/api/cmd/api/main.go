@@ -18,6 +18,7 @@ import (
 	"github.com/sislelabs/distill/apps/api/internal/db"
 	apphttp "github.com/sislelabs/distill/apps/api/internal/http"
 	"github.com/sislelabs/distill/apps/api/internal/llmclient"
+	"github.com/sislelabs/distill/apps/api/internal/ratelimit"
 
 	"net/http"
 )
@@ -67,12 +68,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	rateLimiter := ratelimit.New(cfg.RedisURL, 120, time.Minute)
+
 	srv := &apphttp.Server{
 		Queries:     queries,
 		Pool:        pool,
 		Config:      cfg,
 		LLM:         llm,
 		RiverClient: riverClient,
+		RateLimiter: rateLimiter,
 	}
 
 	router := apphttp.NewRouter(srv)
