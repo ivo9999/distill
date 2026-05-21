@@ -69,6 +69,11 @@ func createNewsletter(s *Server) http.HandlerFunc {
 		// counted lifetime per Discord guild (so a fresh account on the same
 		// guild does not reset the quota). Admins bypass. Scheduled generations
 		// (is_on_demand=false) are unaffected.
+		//
+		// freeTierOnDemand is computed once here and reused after the
+		// newsletter is saved to decide whether to record the free
+		// generation in the guild ledger — avoids a second GetUserByID.
+		freeTierOnDemand := false
 		if req.IsOnDemand && !s.isAdminUUID(userID) {
 			user, err := s.Queries.GetUserByID(r.Context(), userID)
 			if err != nil {
@@ -76,6 +81,7 @@ func createNewsletter(s *Server) http.HandlerFunc {
 				return
 			}
 			if user.SubscriptionStatus != "active" {
+				freeTierOnDemand = true
 				used, err := s.Queries.GuildFreeGenerationUsed(r.Context(), server.DiscordGuildID)
 				if err != nil {
 					writeError(w, http.StatusInternalServerError, "failed to check guild quota")
@@ -121,16 +127,14 @@ func createNewsletter(s *Server) http.HandlerFunc {
 		}
 
 		// Record the free generation against the Discord guild so it
-		// survives a server delete + re-add. Free-tier on-demand only;
-		// idempotent (ON CONFLICT DO NOTHING). Non-fatal — the
-		// newsletter is already saved — so log-and-continue.
-		if req.IsOnDemand && !s.isAdminUUID(userID) {
-			ledgerUser, uerr := s.Queries.GetUserByID(r.Context(), userID)
-			if uerr == nil && ledgerUser.SubscriptionStatus != "active" {
-				if merr := s.Queries.MarkGuildFreeGenerationUsed(r.Context(), server.DiscordGuildID); merr != nil {
-					slog.Error("failed to mark guild free generation used",
-						"guild", server.DiscordGuildID, "err", merr)
-				}
+		// survives a server delete + re-add. Free-tier on-demand only
+		// (freeTierOnDemand, computed at the gate above); idempotent
+		// (ON CONFLICT DO NOTHING). Non-fatal — the newsletter is
+		// already saved — so log-and-continue.
+		if freeTierOnDemand {
+			if merr := s.Queries.MarkGuildFreeGenerationUsed(r.Context(), server.DiscordGuildID); merr != nil {
+				slog.Error("failed to mark guild free generation used",
+					"guild", server.DiscordGuildID, "err", merr)
 			}
 		}
 
