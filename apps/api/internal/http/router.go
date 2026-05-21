@@ -83,6 +83,9 @@ func NewRouter(s *Server) http.Handler {
 		r.Post("/api/billing/checkout", createCheckout(s))
 		r.Post("/api/billing/portal", createPortal(s))
 
+		// Usage quota
+		r.Post("/api/usage/{kind}", claimUsage(s))
+
 		// Admin
 		r.Get("/api/admin/dashboard", adminDashboard(s))
 	})
