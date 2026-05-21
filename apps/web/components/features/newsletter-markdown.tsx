@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 
 // NewsletterMarkdown renders newsletter draft markdown with the
 // newsletter's typography — sans-serif headings, serif-friendly body
@@ -11,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 export function NewsletterMarkdown({ content }: { content: string }) {
   return (
     <ReactMarkdown
+      rehypePlugins={[rehypeSanitize]}
       components={{
         h2: (props) => (
           <h2
