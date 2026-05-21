@@ -21,3 +21,13 @@ export async function PATCH(
   const data = await resp.json();
   return NextResponse.json(data, { status: resp.status });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const resp = await goFetch(`/api/servers/${id}`, { method: "DELETE" });
+  const data = await resp.json();
+  return NextResponse.json(data, { status: resp.status });
+}
