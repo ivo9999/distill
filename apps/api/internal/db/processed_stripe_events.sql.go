@@ -16,12 +16,29 @@ ON CONFLICT (event_id) DO NOTHING
 RETURNING event_id
 `
 
-// Atomically record that a Stripe event is being processed. Returns the
-// event_id on a fresh insert; returns no row if the event was already
-// processed (the caller treats "no row" as "skip, already handled").
+// Records that a Stripe event has been processed. Called *after* the
+// handler succeeds. Returns the event_id on a fresh insert; returns no
+// row (ErrNoRows) when the event was already recorded — harmless, the
+// caller treats that as "already done."
 func (q *Queries) ClaimStripeEvent(ctx context.Context, eventID string) (string, error) {
 	row := q.db.QueryRow(ctx, claimStripeEvent, eventID)
 	var event_id string
 	err := row.Scan(&event_id)
 	return event_id, err
+}
+
+const isStripeEventProcessed = `-- name: IsStripeEventProcessed :one
+SELECT EXISTS (
+  SELECT 1 FROM processed_stripe_events WHERE event_id = $1
+)::bool
+`
+
+// Reports whether a Stripe event has already been fully processed.
+// Checked before running a webhook handler so a retried delivery is
+// skipped.
+func (q *Queries) IsStripeEventProcessed(ctx context.Context, eventID string) (bool, error) {
+	row := q.db.QueryRow(ctx, isStripeEventProcessed, eventID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }

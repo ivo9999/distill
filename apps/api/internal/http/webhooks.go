@@ -30,18 +30,23 @@ func stripeWebhookHandler(s *Server) http.HandlerFunc {
 			return
 		}
 
-		// Idempotency: Stripe delivers at-least-once. Skip an event we
-		// have already processed. ClaimStripeEvent returns no row (an
-		// ErrNoRows) when the event_id is already present.
 		ctx := r.Context()
-		if _, claimErr := s.Queries.ClaimStripeEvent(ctx, event.ID); claimErr != nil {
-			if errors.Is(claimErr, pgx.ErrNoRows) {
-				slog.Debug("stripe event already processed, skipping", "event_id", event.ID)
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-			slog.Error("failed to claim stripe event", "event_id", event.ID, "err", claimErr)
-			writeError(w, http.StatusInternalServerError, "failed to record event")
+
+		// Idempotency pre-check: if this event was already fully
+		// processed, skip it. The authoritative claim happens *after*
+		// the handler runs (below) — claiming before would mean a
+		// handler that dies mid-way leaves the event marked done but
+		// its side effect unapplied, and Stripe's retry would then be
+		// suppressed. The handlers only *set* subscription_status to a
+		// deterministic value, so processing an event twice (if Stripe
+		// retries before the post-claim commits) is harmless.
+		if processed, perr := s.Queries.IsStripeEventProcessed(ctx, event.ID); perr != nil {
+			slog.Error("failed to check stripe event", "event_id", event.ID, "err", perr)
+			writeError(w, http.StatusInternalServerError, "failed to check event")
+			return
+		} else if processed {
+			slog.Debug("stripe event already processed, skipping", "event_id", event.ID)
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 
@@ -58,6 +63,13 @@ func stripeWebhookHandler(s *Server) http.HandlerFunc {
 			handleInvoicePaymentFailed(s, event)
 		default:
 			slog.Debug("unhandled stripe event", "type", event.Type)
+		}
+
+		// Mark the event processed only after the handler ran. A
+		// failure to record is non-fatal — worst case the event is
+		// processed again on a Stripe retry, which is idempotent.
+		if _, claimErr := s.Queries.ClaimStripeEvent(ctx, event.ID); claimErr != nil && !errors.Is(claimErr, pgx.ErrNoRows) {
+			slog.Error("failed to mark stripe event processed", "event_id", event.ID, "err", claimErr)
 		}
 
 		w.WriteHeader(http.StatusOK)
