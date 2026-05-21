@@ -8,6 +8,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type GuildFreeGeneration struct {
+	DiscordGuildID string             `json:"discord_guild_id"`
+	UsedAt         pgtype.Timestamptz `json:"used_at"`
+}
+
 type Message struct {
 	ID                pgtype.UUID        `json:"id"`
 	DiscordMessageID  string             `json:"discord_message_id"`

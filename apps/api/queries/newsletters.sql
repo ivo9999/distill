@@ -34,9 +34,3 @@ SELECT COUNT(*)::int FROM newsletters
 WHERE server_id = $1
   AND is_on_demand = true
   AND created_at >= date_trunc('month', NOW());
-
--- name: CountOnDemandEverForGuild :one
-SELECT COUNT(*)::int FROM newsletters n
-JOIN servers s ON s.id = n.server_id
-WHERE s.discord_guild_id = $1
-  AND n.is_on_demand = true;

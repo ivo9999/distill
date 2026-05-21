@@ -43,3 +43,6 @@ SELECT s.* FROM servers s
 JOIN users u ON s.user_id = u.id
 WHERE s.status = 'active'
   AND u.subscription_status = 'active';
+
+-- name: DeleteServer :exec
+DELETE FROM servers WHERE id = $1;

@@ -53,6 +53,15 @@ func (q *Queries) CreateServer(ctx context.Context, arg CreateServerParams) (Ser
 	return i, err
 }
 
+const deleteServer = `-- name: DeleteServer :exec
+DELETE FROM servers WHERE id = $1
+`
+
+func (q *Queries) DeleteServer(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteServer, id)
+	return err
+}
+
 const getServerByGuildID = `-- name: GetServerByGuildID :one
 SELECT id, user_id, discord_guild_id, name, icon_url, community_type, schedule_cron, status, created_at, voice_sample FROM servers WHERE discord_guild_id = $1 AND status = 'active'
 `

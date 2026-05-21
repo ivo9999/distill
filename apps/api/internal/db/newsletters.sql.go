@@ -11,20 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countOnDemandEverForGuild = `-- name: CountOnDemandEverForGuild :one
-SELECT COUNT(*)::int FROM newsletters n
-JOIN servers s ON s.id = n.server_id
-WHERE s.discord_guild_id = $1
-  AND n.is_on_demand = true
-`
-
-func (q *Queries) CountOnDemandEverForGuild(ctx context.Context, discordGuildID string) (int32, error) {
-	row := q.db.QueryRow(ctx, countOnDemandEverForGuild, discordGuildID)
-	var column_1 int32
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const countOnDemandThisMonth = `-- name: CountOnDemandThisMonth :one
 SELECT COUNT(*)::int FROM newsletters
 WHERE server_id = $1
