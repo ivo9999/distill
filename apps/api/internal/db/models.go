@@ -91,6 +91,13 @@ type Server struct {
 	VoiceSample    pgtype.Text        `json:"voice_sample"`
 }
 
+type UsageCounter struct {
+	UserID pgtype.UUID `json:"user_id"`
+	Kind   string      `json:"kind"`
+	Day    pgtype.Date `json:"day"`
+	Count  int32       `json:"count"`
+}
+
 type User struct {
 	ID                 pgtype.UUID        `json:"id"`
 	DiscordID          string             `json:"discord_id"`
