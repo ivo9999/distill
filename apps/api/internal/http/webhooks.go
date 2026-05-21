@@ -3,10 +3,12 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/webhook"
@@ -25,6 +27,21 @@ func stripeWebhookHandler(s *Server) http.HandlerFunc {
 		event, err := webhook.ConstructEvent(body, r.Header.Get("Stripe-Signature"), s.Config.StripeWebhookSecret)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid signature")
+			return
+		}
+
+		// Idempotency: Stripe delivers at-least-once. Skip an event we
+		// have already processed. ClaimStripeEvent returns no row (an
+		// ErrNoRows) when the event_id is already present.
+		ctx := r.Context()
+		if _, claimErr := s.Queries.ClaimStripeEvent(ctx, event.ID); claimErr != nil {
+			if errors.Is(claimErr, pgx.ErrNoRows) {
+				slog.Debug("stripe event already processed, skipping", "event_id", event.ID)
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			slog.Error("failed to claim stripe event", "event_id", event.ID, "err", claimErr)
+			writeError(w, http.StatusInternalServerError, "failed to record event")
 			return
 		}
 
@@ -86,9 +103,16 @@ func handleCheckoutCompleted(s *Server, event stripe.Event) {
 	}
 
 	// Update subscription status.
+	// Prefer the actual subscription status — a checkout can complete
+	// in an "incomplete" state (e.g. SCA still pending). Fall back to
+	// "active" only when the session carries no subscription object.
+	status := "active"
+	if sess.Subscription != nil && sess.Subscription.Status != "" {
+		status = string(sess.Subscription.Status)
+	}
 	_ = s.Queries.UpdateSubscriptionStatus(ctx, db.UpdateSubscriptionStatusParams{
 		ID:                 user.ID,
-		SubscriptionStatus: "active",
+		SubscriptionStatus: status,
 	})
 
 	slog.Info("checkout completed", "user_id", user.ID, "customer_id", sess.Customer.ID)
