@@ -44,15 +44,14 @@ func New(redisURL string, limit int, window time.Duration) *Limiter {
 // (returns true) — a limiter outage must never take down the API.
 func (l *Limiter) allow(ctx context.Context, key string) bool {
 	fullKey := "ratelimit:" + key
-	count, err := l.rdb.Incr(ctx, fullKey).Result()
-	if err != nil {
+	pipe := l.rdb.TxPipeline()
+	incr := pipe.Incr(ctx, fullKey)
+	pipe.Expire(ctx, fullKey, l.window)
+	if _, err := pipe.Exec(ctx); err != nil {
 		slog.Warn("ratelimit: redis error, failing open", "err", err)
 		return true
 	}
-	if count == 1 {
-		l.rdb.Expire(ctx, fullKey, l.window)
-	}
-	return count <= int64(l.limit)
+	return incr.Val() <= int64(l.limit)
 }
 
 // Middleware returns a chi-compatible middleware enforcing the limit.

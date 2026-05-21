@@ -23,8 +23,13 @@ export async function rateLimit(
   if (!redis) return true;
   try {
     const fullKey = `ratelimit:web:${key}`;
-    const count = await redis.incr(fullKey);
-    if (count === 1) await redis.expire(fullKey, windowSec);
+    const results = await redis
+      .multi()
+      .incr(fullKey)
+      .expire(fullKey, windowSec)
+      .exec();
+    const count = results?.[0]?.[1];
+    if (typeof count !== "number") return true;
     return count <= limit;
   } catch {
     return true;
