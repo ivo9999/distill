@@ -91,6 +91,20 @@ func createNewsletter(s *Server) http.HandlerFunc {
 					writeError(w, http.StatusPaymentRequired, "free tier limit reached: subscribe to generate more")
 					return
 				}
+			} else {
+				// Pro: re-check the monthly on-demand cap server-side.
+				// The UI pre-checks too, but only this server-side
+				// check stops parallel requests from bypassing the cap.
+				const proMonthlyLimit int32 = 10
+				usedThisMonth, cerr := s.Queries.CountOnDemandThisMonth(r.Context(), serverID)
+				if cerr != nil {
+					writeError(w, http.StatusInternalServerError, "failed to check monthly quota")
+					return
+				}
+				if usedThisMonth >= proMonthlyLimit {
+					writeError(w, http.StatusPaymentRequired, "monthly on-demand limit reached")
+					return
+				}
 			}
 		}
 
