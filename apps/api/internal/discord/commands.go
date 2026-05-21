@@ -96,6 +96,17 @@ func (b *Bot) handleOptout(s *discordgo.Session, i *discordgo.InteractionCreate)
 		return
 	}
 
+	// Delete any messages we already collected from this user in this
+	// server — opting out means their words are gone, not just
+	// excluded from future drafts.
+	if derr := b.queries.DeleteMessagesByAuthorInServer(ctx, db.DeleteMessagesByAuthorInServerParams{
+		ServerID:        server.ID,
+		DiscordAuthorID: userID,
+	}); derr != nil {
+		slog.Error("failed to delete opted-out user's messages",
+			"server_id", server.ID, "err", derr)
+	}
+
 	respond(s, i, "You've been opted out. Your messages will no longer be included in Distill digests for this server.")
 }
 
