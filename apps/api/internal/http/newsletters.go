@@ -463,6 +463,13 @@ func publishNewsletter(s *Server) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "platform and subject are required")
 			return
 		}
+		switch req.Platform {
+		case "beehiiv", "convertkit", "ghost":
+			// ok
+		default:
+			writeError(w, http.StatusBadRequest, "unsupported platform")
+			return
+		}
 
 		if s.RiverClient == nil {
 			writeError(w, http.StatusServiceUnavailable, "job queue not available")
