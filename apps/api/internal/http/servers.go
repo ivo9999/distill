@@ -128,6 +128,44 @@ func getServer(s *Server) http.HandlerFunc {
 	}
 }
 
+// deleteServer hard-deletes a server the caller owns. The DB cascade
+// (ON DELETE CASCADE on monitored_channels / messages / optouts /
+// newsletters) removes all dependent rows. guild_free_generations has
+// no FK to servers, so the guild's free-generation record survives —
+// re-adding the same Discord guild does not reset the free quota.
+func deleteServer(s *Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.UserIDFromContext(r.Context())
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		var serverID pgtype.UUID
+		if err := serverID.Scan(chi.URLParam(r, "serverID")); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid server ID")
+			return
+		}
+
+		server, err := s.Queries.GetServerByID(r.Context(), serverID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "server not found")
+			return
+		}
+		if server.UserID != userID {
+			writeError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+
+		if err := s.Queries.DeleteServer(r.Context(), serverID); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to delete server")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+	}
+}
+
 // textOrEmpty unwraps a pgtype.Text into a plain string ("" when NULL).
 // Keeps the JSON wire format predictable for the frontend instead of
 // the {String, Valid} object pgtype marshals to by default.

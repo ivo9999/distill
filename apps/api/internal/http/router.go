@@ -56,6 +56,7 @@ func NewRouter(s *Server) http.Handler {
 		r.Post("/api/servers", createServer(s))
 		r.Get("/api/servers/{serverID}", getServer(s))
 		r.Patch("/api/servers/{serverID}", updateServer(s))
+		r.Delete("/api/servers/{serverID}", deleteServer(s))
 		r.Post("/api/servers/{serverID}/generate", triggerGenerate(s))
 		r.Get("/api/servers/{serverID}/messages", listMessages(s))
 		r.Get("/api/servers/{serverID}/generation-quota", getGenerationQuota(s))
