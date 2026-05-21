@@ -24,7 +24,14 @@ func getMe(s *Server) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, user)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"id":                  user.ID,
+			"discord_id":          user.DiscordID,
+			"discord_username":    user.DiscordUsername,
+			"email":               user.Email,
+			"avatar_url":          user.AvatarUrl,
+			"subscription_status": user.SubscriptionStatus,
+		})
 	}
 }
 

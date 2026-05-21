@@ -18,7 +18,7 @@ import (
 
 func stripeWebhookHandler(s *Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(io.LimitReader(r.Body, 65536))
+		body, err := io.ReadAll(io.LimitReader(r.Body, 524288))
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "failed to read body")
 			return
