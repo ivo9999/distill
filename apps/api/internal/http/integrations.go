@@ -60,6 +60,7 @@ func connectIntegration(s *Server) http.HandlerFunc {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MiB cap
 
 		var req connectIntegrationRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

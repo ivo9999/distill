@@ -37,6 +37,7 @@ func createNewsletter(s *Server) http.HandlerFunc {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MiB cap
 
 		var serverID pgtype.UUID
 		if err := serverID.Scan(chi.URLParam(r, "serverID")); err != nil {
@@ -350,6 +351,7 @@ func updateNewsletter(s *Server) http.HandlerFunc {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MiB cap
 
 		var nlID pgtype.UUID
 		if err := nlID.Scan(chi.URLParam(r, "newsletterID")); err != nil {
