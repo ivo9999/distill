@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     q: "Who actually reads my members' messages? Where do they go?",
-    a: "The bot reads only the channels you point it at. Messages flow through a two-stage writer that paraphrases everything and anonymizes by default — nobody's name appears in the draft unless you put it there. Raw messages are deleted after the draft is generated. Anyone in your Discord can type /distill optout and their words are permanently excluded.",
+    a: "The bot reads only the channels you point it at. Messages flow through a two-stage writer that paraphrases everything and anonymizes by default — nobody's name appears in the draft unless you put it there. Raw messages are automatically deleted within 30 days. Anyone in your Discord can type /distill optout and their words are permanently excluded — and any messages of theirs we already collected are deleted right away.",
   },
   {
     q: "Can I trust an editor to write my emails?",

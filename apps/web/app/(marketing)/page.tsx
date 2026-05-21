@@ -608,6 +608,8 @@ function Footer() {
           <span className="text-ink-light">·</span>
           <a href="#pricing" className="hover:text-ink">Pricing</a>
           <a href="#faq" className="hover:text-ink">FAQ</a>
+          <Link href="/privacy" className="hover:text-ink">Privacy</Link>
+          <Link href="/terms" className="hover:text-ink">Terms</Link>
         </div>
         <span className="text-[13px] text-ink-medium">
           Built by SisleLabs in Sofia · © 2026
