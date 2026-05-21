@@ -53,12 +53,16 @@ export function MarkdownToolbar({ textareaRef, value, onChange }: MarkdownToolba
       // Prefix every line the selection spans. lineStart is the start
       // of the first touched line; we only rewrite that slice.
       const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-      const region = value.slice(lineStart, end);
+      // If the selection ends exactly on a newline (double/triple-click
+      // can do this), that trailing \n belongs to the *next* line —
+      // exclude it so the next line doesn't also get prefixed.
+      const lineEnd = end > start && value[end - 1] === "\n" ? end - 1 : end;
+      const region = value.slice(lineStart, lineEnd);
       const prefixed = region
         .split("\n")
         .map((line) => action.prefix + line)
         .join("\n");
-      next = value.slice(0, lineStart) + prefixed + value.slice(end);
+      next = value.slice(0, lineStart) + prefixed + value.slice(lineEnd);
       // Select the whole prefixed region.
       nextStart = lineStart;
       nextEnd = lineStart + prefixed.length;
