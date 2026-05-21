@@ -24,3 +24,9 @@ WHERE m.server_id = $1
   AND o.id IS NULL
   AND m.content != '[deleted]'
 ORDER BY m.sent_at ASC;
+
+-- name: DeleteMessagesByAuthorInServer :exec
+DELETE FROM messages WHERE server_id = $1 AND discord_author_id = $2;
+
+-- name: DeleteMessagesOlderThan :exec
+DELETE FROM messages WHERE created_at < $1;

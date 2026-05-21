@@ -11,6 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteMessagesByAuthorInServer = `-- name: DeleteMessagesByAuthorInServer :exec
+DELETE FROM messages WHERE server_id = $1 AND discord_author_id = $2
+`
+
+type DeleteMessagesByAuthorInServerParams struct {
+	ServerID        pgtype.UUID `json:"server_id"`
+	DiscordAuthorID string      `json:"discord_author_id"`
+}
+
+func (q *Queries) DeleteMessagesByAuthorInServer(ctx context.Context, arg DeleteMessagesByAuthorInServerParams) error {
+	_, err := q.db.Exec(ctx, deleteMessagesByAuthorInServer, arg.ServerID, arg.DiscordAuthorID)
+	return err
+}
+
+const deleteMessagesOlderThan = `-- name: DeleteMessagesOlderThan :exec
+DELETE FROM messages WHERE created_at < $1
+`
+
+func (q *Queries) DeleteMessagesOlderThan(ctx context.Context, createdAt pgtype.Timestamptz) error {
+	_, err := q.db.Exec(ctx, deleteMessagesOlderThan, createdAt)
+	return err
+}
+
 const getMessagesForGeneration = `-- name: GetMessagesForGeneration :many
 SELECT m.id, m.discord_message_id, m.server_id, m.channel_id, m.discord_author_id, m.author_display_name, m.content, m.reply_to_discord_id, m.thread_discord_id, m.sent_at, m.reaction_count, m.reply_count, m.raw_payload, m.created_at FROM messages m
 LEFT JOIN optouts o ON o.server_id = m.server_id AND o.discord_user_id = m.discord_author_id
