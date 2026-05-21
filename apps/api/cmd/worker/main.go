@@ -65,8 +65,9 @@ func main() {
 		EncryptionKey: cfg.EncryptionKey,
 	}
 	trialWorker := &jobs.TrialReminderWorker{
-		Queries:  queries,
-		DMSender: bot,
+		Queries:    queries,
+		DMSender:   bot,
+		AppBaseURL: cfg.AppBaseURL,
 	}
 	retentionWorker := &jobs.MessageRetentionWorker{
 		Queries: queries,

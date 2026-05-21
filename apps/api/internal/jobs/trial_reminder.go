@@ -25,8 +25,9 @@ func (TrialReminderArgs) Kind() string { return "trial_reminder" }
 // TrialReminderWorker sends DMs to users whose trials are about to expire.
 type TrialReminderWorker struct {
 	river.WorkerDefaults[TrialReminderArgs]
-	Queries  *db.Queries
-	DMSender DiscordDMSender
+	Queries    *db.Queries
+	DMSender   DiscordDMSender
+	AppBaseURL string
 }
 
 func (w *TrialReminderWorker) Work(ctx context.Context, _ *river.Job[TrialReminderArgs]) error {
@@ -45,7 +46,7 @@ func (w *TrialReminderWorker) Work(ctx context.Context, _ *river.Job[TrialRemind
 		msg := fmt.Sprintf(
 			"Hey %s! Your Distill trial expires in %d day(s). "+
 				"Upgrade to keep getting weekly community digests: %s",
-			u.DiscordUsername, daysLeft, "https://distill.so/billing",
+			u.DiscordUsername, daysLeft, w.AppBaseURL+"/billing",
 		)
 		if err := w.DMSender.SendDM(u.DiscordID, msg); err != nil {
 			slog.Warn("failed to send trial reminder DM", "user_id", u.DiscordID, "err", err)
