@@ -111,8 +111,11 @@ export async function runPipeline(
   // Pass 2: Draft newsletter
   const pass2 = await runPass2(storiesWithMessages, input.serverName, input.voiceSample);
 
-  const model1 = process.env.AI_MODEL_PASS1 ?? "gemini-2.5-flash";
-  const model2 = process.env.AI_MODEL_PASS2 ?? "gemini-2.5-pro";
+  // Defaults MUST match the call-site defaults in pass1.ts / pass2.ts —
+  // these strings drive the PRICING lookup, so a mismatch silently
+  // reports the wrong cost.
+  const model1 = process.env.AI_MODEL_PASS1 ?? "gemini-2.5-flash-lite";
+  const model2 = process.env.AI_MODEL_PASS2 ?? "claude-haiku-4-5";
 
   const costUsd =
     calculateCost(model1, pass1.tokensIn, pass1.tokensOut) +
