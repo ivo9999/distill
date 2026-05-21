@@ -24,6 +24,8 @@ function extractTitle(nl: Newsletter): string {
   return match ? match[1] : "Untitled Newsletter";
 }
 
+const PAGE_SIZE = 20;
+
 interface Quota {
   used: number;
   limit: number;
@@ -40,6 +42,7 @@ export default function NewslettersPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
+  const [page, setPage] = useState(1);
 
   const fetchNewsletters = () => {
     fetch(`/api/proxy/servers/${serverId}/newsletters`)
@@ -109,6 +112,8 @@ export default function NewslettersPage() {
     status: nl.status,
     updatedLabel: formatDistanceToNow(new Date(nl.created_at ?? ""), { addSuffix: true }),
   }));
+  const totalPages = Math.ceil(feedItems.length / PAGE_SIZE);
+  const pageItems = feedItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -143,7 +148,32 @@ export default function NewslettersPage() {
           actionDisabled={generating || !!quotaExhausted}
         />
       ) : (
-        <NewsletterFeed items={feedItems} />
+        <>
+          <NewsletterFeed items={pageItems} />
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-ink-medium">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
