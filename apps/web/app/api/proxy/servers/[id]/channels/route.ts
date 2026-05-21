@@ -1,14 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { goFetch } from "@/lib/api";
+import { NextRequest } from "next/server";
+import { proxyJson } from "@/lib/api";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const resp = await goFetch(`/api/servers/${id}/channels`);
-  const data = await resp.json();
-  return NextResponse.json(data, { status: resp.status });
+  return proxyJson(`/api/servers/${id}/channels`);
 }
 
 export async function POST(
@@ -17,7 +15,5 @@ export async function POST(
 ) {
   const { id } = await params;
   const body = await req.text();
-  const resp = await goFetch(`/api/servers/${id}/channels`, { method: "POST", body });
-  const data = await resp.json();
-  return NextResponse.json(data, { status: resp.status });
+  return proxyJson(`/api/servers/${id}/channels`, { method: "POST", body });
 }

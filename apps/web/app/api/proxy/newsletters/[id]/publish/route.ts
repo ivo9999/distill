@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { goFetch } from "@/lib/api";
+import { NextRequest } from "next/server";
+import { proxyJson } from "@/lib/api";
 
 export async function POST(
   req: NextRequest,
@@ -7,7 +7,5 @@ export async function POST(
 ) {
   const { id } = await params;
   const body = await req.text();
-  const resp = await goFetch(`/api/newsletters/${id}/publish`, { method: "POST", body });
-  const data = await resp.json();
-  return NextResponse.json(data, { status: resp.status });
+  return proxyJson(`/api/newsletters/${id}/publish`, { method: "POST", body });
 }

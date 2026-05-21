@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { goFetch } from "@/lib/api";
+import { NextRequest } from "next/server";
+import { proxyJson } from "@/lib/api";
 
 export async function POST(
   req: NextRequest,
@@ -7,9 +7,7 @@ export async function POST(
 ) {
   const { platform } = await params;
   const body = await req.text();
-  const resp = await goFetch(`/api/integrations/${platform}`, { method: "POST", body });
-  const data = await resp.json();
-  return NextResponse.json(data, { status: resp.status });
+  return proxyJson(`/api/integrations/${platform}`, { method: "POST", body });
 }
 
 export async function DELETE(
@@ -17,7 +15,5 @@ export async function DELETE(
   { params }: { params: Promise<{ platform: string }> },
 ) {
   const { platform } = await params;
-  const resp = await goFetch(`/api/integrations/${platform}`, { method: "DELETE" });
-  const data = await resp.json();
-  return NextResponse.json(data, { status: resp.status });
+  return proxyJson(`/api/integrations/${platform}`, { method: "DELETE" });
 }
