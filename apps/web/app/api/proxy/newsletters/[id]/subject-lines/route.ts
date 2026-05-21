@@ -32,6 +32,24 @@ export async function POST(
     );
   }
 
+  // Claim a daily-quota slot before running the (paid) LLM call.
+  const quotaRes = await goFetch("/api/usage/subject_lines", {
+    method: "POST",
+  });
+  if (quotaRes.status === 429) {
+    const q = await quotaRes.json().catch(() => ({}));
+    return NextResponse.json(
+      { error: q.error || "Daily limit reached for subject-line generation." },
+      { status: 429 },
+    );
+  }
+  if (!quotaRes.ok) {
+    return NextResponse.json(
+      { error: "Couldn't verify your usage quota. Please try again." },
+      { status: 503 },
+    );
+  }
+
   const nlRes = await goFetch(`/api/newsletters/${id}`);
   if (!nlRes.ok) {
     return NextResponse.json(

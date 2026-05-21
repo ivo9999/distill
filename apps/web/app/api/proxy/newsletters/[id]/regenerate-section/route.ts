@@ -38,6 +38,25 @@ export async function POST(
     );
   }
 
+  // Claim a daily-quota slot before running the (paid) LLM call.
+  // Returns 429 if the user is over their per-day section-rewrite cap.
+  const quotaRes = await goFetch("/api/usage/regenerate_section", {
+    method: "POST",
+  });
+  if (quotaRes.status === 429) {
+    const q = await quotaRes.json().catch(() => ({}));
+    return NextResponse.json(
+      { error: q.error || "Daily limit reached for section rewrites." },
+      { status: 429 },
+    );
+  }
+  if (!quotaRes.ok) {
+    return NextResponse.json(
+      { error: "Couldn't verify your usage quota. Please try again." },
+      { status: 503 },
+    );
+  }
+
   // Load the newsletter so we can (a) confirm it exists + the user
   // owns it (the Go API enforces this via the session bearer), and
   // (b) pull the source-messages map for this specific storyId.
