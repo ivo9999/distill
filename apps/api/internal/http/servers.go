@@ -569,6 +569,16 @@ func addChannel(s *Server) http.HandlerFunc {
 			return
 		}
 
+		existingChannels, err := s.Queries.ListMonitoredChannels(r.Context(), serverID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to check channels")
+			return
+		}
+		if len(existingChannels) >= 25 {
+			writeError(w, http.StatusBadRequest, "channel limit reached (max 25 per server)")
+			return
+		}
+
 		var req addChannelRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid request body")
