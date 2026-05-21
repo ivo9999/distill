@@ -29,7 +29,11 @@ const RequestSchema = z.object({
 // throws on unequal lengths), so a wrong-length token fails fast without
 // leaking timing on the compare itself.
 function validInternalKey(authHeader: string | null): boolean {
-  const expected = `Bearer ${process.env.INTERNAL_API_KEY ?? ""}`;
+  const key = process.env.INTERNAL_API_KEY ?? "";
+  // A missing/empty key must never authenticate anyone — otherwise the
+  // expected value collapses to "Bearer " and a 7-char header matches.
+  if (!key) return false;
+  const expected = `Bearer ${key}`;
   if (!authHeader || authHeader.length !== expected.length) return false;
   return timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected));
 }
