@@ -20,6 +20,7 @@ type Config struct {
 	StripePriceID       string
 	EncryptionKey       string
 	AppBaseURL          string
+	RedisURL            string
 	LogLevel            string
 	AdminUserIDs        []string
 }
@@ -39,10 +40,26 @@ func Load() (*Config, error) {
 		StripePriceID:       os.Getenv("STRIPE_PRICE_ID_CREATOR"),
 		EncryptionKey:       os.Getenv("DISTILL_ENCRYPTION_KEY"),
 		AppBaseURL:          os.Getenv("APP_BASE_URL"),
+		RedisURL:            os.Getenv("REDIS_URL"),
 		LogLevel:            os.Getenv("LOG_LEVEL"),
 	}
 	if c.DatabaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")
+	}
+	// Fail fast on a misconfigured deploy rather than booting into
+	// confusing runtime errors. These secrets are all required for the
+	// app to function correctly.
+	required := map[string]string{
+		"DISCORD_BOT_TOKEN":      c.DiscordBotToken,
+		"INTERNAL_API_KEY":       c.InternalAPIKey,
+		"STRIPE_SECRET_KEY":      c.StripeSecretKey,
+		"STRIPE_WEBHOOK_SECRET":  c.StripeWebhookSecret,
+		"DISTILL_ENCRYPTION_KEY": c.EncryptionKey,
+	}
+	for name, val := range required {
+		if val == "" {
+			return nil, fmt.Errorf("%s is required", name)
+		}
 	}
 	if c.LogLevel == "" {
 		c.LogLevel = "info"
