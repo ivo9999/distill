@@ -16,6 +16,29 @@ export async function GET(
 
   const { guildId } = await params;
 
+  // Verify the caller actually belongs to this guild — otherwise any
+  // logged-in user could enumerate channels of any guild the bot is in.
+  const userGuildsResp = await fetch(
+    "https://discord.com/api/v10/users/@me/guilds",
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!userGuildsResp.ok) {
+    return NextResponse.json(
+      { error: "couldn't verify your Discord servers" },
+      { status: 502 },
+    );
+  }
+  const userGuilds = await userGuildsResp.json();
+  const isMember =
+    Array.isArray(userGuilds) &&
+    userGuilds.some((g: { id: string }) => g.id === guildId);
+  if (!isMember) {
+    return NextResponse.json(
+      { error: "you don't have access to this server" },
+      { status: 403 },
+    );
+  }
+
   const resp = await fetch(
     `https://discord.com/api/v10/guilds/${guildId}/channels`,
     { headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` } },
