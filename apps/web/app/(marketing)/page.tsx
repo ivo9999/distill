@@ -105,22 +105,22 @@ function Hero() {
   return (
     <section className="px-4 pt-20 pb-20 sm:px-6 md:pt-32 md:pb-32">
       <div className="mx-auto w-full max-w-[1100px]">
-        <SectionLabel>{"// for community owners who haven't sent the email"}</SectionLabel>
+        <SectionLabel>{"// for people running a Discord worth reading"}</SectionLabel>
 
         <div className="mt-6 grid items-start gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
           {/* Left — the pitch */}
           <div>
             <h1 className="text-[clamp(40px,5.6vw,68px)] font-black leading-[1.04] tracking-tight">
-              Your list is waiting.
+              The best thing said in your Discord this week
               <br />
-              <span className="text-ink-medium">Your community already wrote the email.</span>
+              <span className="text-ink-medium">— written up, in your voice, in ten minutes.</span>
             </h1>
 
             <p className="mt-7 max-w-[540px] text-[17px] leading-relaxed text-ink-medium sm:text-[19px]">
-              You haven&apos;t emailed your list in weeks. Not because nothing&apos;s happening
-              — your Discord is on fire. Because you can&apos;t bring yourself to sit down
-              and write it up. Distill writes it up. You spend ten minutes making it
-              yours, and ship.
+              Every week, your community has a few moments worth sending to an
+              audience: a great thread, a launch, a take. distill reads the week,
+              drafts the email, hands it to you. You edit for ten minutes. You
+              ship to your list — or you start one this week.
             </p>
 
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
