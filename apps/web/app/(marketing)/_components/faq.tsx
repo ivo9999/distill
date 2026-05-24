@@ -20,6 +20,10 @@ const faqs = [
     a: "You're trusting it for the first draft, not the final send. You're still the one hitting publish. The product makes the empty page go away. The 'is this me' check is still yours. Most users edit 15-30% of the draft on a typical week and ship the rest as-is.",
   },
   {
+    q: "Why not just paste my Discord into ChatGPT?",
+    a: "You can. The reason most people don't, week after week: pasting a busy week is hours of scrolling, copying, stripping noise across channels. distill collects the 1,000+ messages, ranks them, drops the weak ones, and hands you a draft on Sunday morning before you're awake — that's the part that's hard to replicate with a chat box. There's also what you can promise your members: /distill optout removes someone permanently, names are anonymized by default, raw messages are deleted within 30 days. \"I paste your conversations into ChatGPT every week\" is not a promise anyone wants to hear from their server owner. The writing is good either way. The product around the writing is the thing you'd otherwise be building yourself.",
+  },
+  {
     q: "What platforms does it publish to?",
     a: "Beehiiv, ConvertKit, and Ghost — one click each, you set up the API key once. Substack doesn't expose a public API; the moment they do, we'll be there. If you publish somewhere else, the markdown is yours to copy-paste anywhere.",
   },
@@ -43,7 +47,7 @@ export function FAQ() {
         </p>
 
         <h2 className="mt-6 text-[clamp(28px,4.2vw,48px)] font-black leading-[1.1] tracking-tight">
-          Six honest answers.
+          Seven honest answers.
         </h2>
 
         <div className="mt-12 rounded-card border border-ink-lighter bg-canvas">
